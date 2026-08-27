@@ -1,0 +1,151 @@
+@using BetaPlatform.Data.Entities
+@model List<BetaPlatform.ViewModels.Machines.MachineListItemViewModel>
+@{
+    ViewData["Title"] = Localizer["Machines"].Value;
+    // Machines are master data: administrators only (research D1). A client user never sees a
+    // button that would be refused.
+    var isAdmin = User.IsInRole("Admin");
+
+    // Running state comes from the one shared rule (004 - contracts/machine-status.md); the view
+    // never re-derives it from Machine.IsRunning. "Inactive" is administrative and is shown as a
+    // separate marker so it is never confused with a live state (FR-004).
+    string StateBadge(MachineRunningState state) => state switch
+    {
+        MachineRunningState.Running => "status-running",
+        MachineRunningState.Stopped => "status-stopped",
+        _ => "status-idle"
+    };
+    string StateText(MachineRunningState state) => state switch
+    {
+        MachineRunningState.Running => Localizer["Running"].Value,
+        MachineRunningState.Stopped => Localizer["Stopped"].Value,
+        _ => Localizer["Unknown"].Value
+    };
+    string StateColor(MachineRunningState state) => state switch
+    {
+        MachineRunningState.Running => "success",
+        MachineRunningState.Stopped => "danger",
+        _ => "secondary"
+    };
+}
+
+<div class="page-header">
+    <h1 class="page-title"><span class="title-icon"><i class="bi bi-gear-fill"></i></span>@Localizer["Machines"]</h1>
+    @if (isAdmin)
+    {
+        <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg"></i>@Localizer["AddMachine"]</a>
+    }
+</div>
+
+@if (!Model.Any())
+{
+    ViewData["EmptyIcon"] = "bi-gear-wide-connected";
+    ViewData["EmptyTitle"] = Localizer["NoMachinesTitle"].Value;
+    ViewData["EmptyText"] = Localizer["NoMachinesText"].Value;
+    ViewData["EmptyActionUrl"] = isAdmin ? Url.Action("Create") : null;
+    ViewData["EmptyActionLabel"] = isAdmin ? Localizer["AddMachine"].Value : null;
+    <div class="card"><div class="card-body">
+        <partial name="_EmptyState" />
+    </div></div>
+}
+else
+{
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#listView" type="button">@Localizer["ListView"]</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#cardView" type="button">@Localizer["CardView"]</button></li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- List view -->
+        <div class="tab-pane fade show active" id="listView">
+            <div class="card"><div class="card-body p-0">
+                <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th>@Localizer["MachineCode"]</th>
+                            <th>@Localizer["MachineName"]</th>
+                            <th>@Localizer["MachineType"]</th>
+                            <th>@Localizer["ProductionLine"]</th>
+                            <th>@Localizer["Status"]</th>
+                            <th class="text-end">@Localizer["Actions"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var item in Model)
+                    {
+                        var m = item.Machine;
+                        <tr>
+                            <td><span class="fw-semibold">@m.MachineCode</span></td>
+                            <td>@m.MachineName</td>
+                            <td>@m.MachineType?.Name</td>
+                            <td>@m.MachineType?.ProductionLine</td>
+                            <td>
+                                <span class="status-badge @StateBadge(item.RunningState)">@StateText(item.RunningState)</span>
+                                @if (!m.IsActive)
+                                {
+                                    <span class="badge-inactive ms-1">@Localizer["Inactive"]</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@m.MachineId" title="@Localizer["View"]"><i class="bi bi-eye"></i></a>
+                                @if (isAdmin)
+                                {
+                                    <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@m.MachineId" title="@Localizer["Edit"]"><i class="bi bi-pencil"></i></a>
+                                    @if (m.IsActive)
+                                    {
+                                        <form asp-action="Deactivate" asp-route-id="@m.MachineId" method="post" class="d-inline"
+                                              onsubmit="return confirm('@Localizer["Deactivate"]?');">
+                                            <button class="btn btn-sm btn-outline-danger" title="@Localizer["Deactivate"]"><i class="bi bi-slash-circle"></i></button>
+                                        </form>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+                </div>
+            </div></div>
+        </div>
+
+        <!-- Card view -->
+        <div class="tab-pane fade" id="cardView">
+            <div class="row g-3">
+            @foreach (var item in Model)
+            {
+                var m = item.Machine;
+                var statusColor = m.IsActive ? StateColor(item.RunningState) : "secondary";
+                <div class="col-md-4 col-lg-3">
+                    <div class="card machine-card status-@statusColor h-100 card-hover">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div class="min-w-0">
+                                    <h5 class="mb-1 text-truncate">@m.MachineName</h5>
+                                    <p class="text-muted small mb-0">@m.MachineCode</p>
+                                </div>
+                                <div class="text-end">
+                                    <span class="status-badge @StateBadge(item.RunningState)">@StateText(item.RunningState)</span>
+                                    @if (!m.IsActive)
+                                    {
+                                        <span class="badge-inactive d-block mt-1">@Localizer["Inactive"]</span>
+                                    }
+                                </div>
+                            </div>
+                            <div class="small text-muted mb-1"><i class="bi bi-tag me-1"></i>@m.MachineType?.Name</div>
+                            <div class="small text-muted mb-3"><i class="bi bi-diagram-3 me-1"></i>@m.MachineType?.ProductionLine</div>
+                            <div class="d-flex gap-2">
+                                <a class="btn btn-sm btn-primary flex-fill" asp-action="Details" asp-route-id="@m.MachineId"><i class="bi bi-eye me-1"></i>@Localizer["View"]</a>
+                                @if (isAdmin)
+                                {
+                                    <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@m.MachineId" title="@Localizer["Edit"]"><i class="bi bi-pencil"></i></a>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            </div>
+        </div>
+    </div>
+}

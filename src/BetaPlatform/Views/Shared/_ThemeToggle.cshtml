@@ -1,0 +1,12 @@
+@*
+    Light/dark theme toggle. Behavior + persistence handled by wwwroot/js/theme.js.
+    The initial state is set server-side on <html data-bs-theme> in _Layout (no flash).
+*@
+<button type="button"
+        class="nav-icon-btn theme-toggle"
+        data-theme-toggle
+        aria-label="@Localizer["ToggleTheme"]"
+        title="@Localizer["ToggleTheme"]">
+    <i class="bi bi-moon-stars-fill icon-moon" aria-hidden="true"></i>
+    <i class="bi bi-brightness-high-fill icon-sun" aria-hidden="true"></i>
+</button>

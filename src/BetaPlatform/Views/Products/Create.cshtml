@@ -1,0 +1,79 @@
+@model BetaPlatform.Data.Entities.Product
+@{ ViewData["Title"] = Localizer["AddProduct"].Value; }
+
+<div class="page-header">
+    <h1 class="page-title"><span class="title-icon"><i class="bi bi-plus-lg"></i></span>@Localizer["AddProduct"]</h1>
+    <a class="btn btn-outline-secondary" asp-action="Index"><i class="bi bi-arrow-left"></i>@Localizer["Cancel"]</a>
+</div>
+
+<form asp-action="Create" method="post" class="form-layout" data-live-form>
+    <div class="form-pane">
+        <div class="card">
+            <div class="card-body p-4">
+                <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+                <div class="form-section">
+                    <div class="section-title"><i class="bi bi-info-circle"></i>@Localizer["BasicInfo"]</div>
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="ProductCode">@Localizer["ProductCode"] <span class="req" title="@Localizer["Required"]">*</span></label>
+                        <input asp-for="ProductCode" class="form-control" aria-required="true" placeholder="@Localizer["ProductCode"]" />
+                        <div class="form-help">@Localizer["ProductCodeHelp"]</div>
+                        <span asp-validation-for="ProductCode" class="field-validation-error small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="ProductName">@Localizer["ProductName"] <span class="req" title="@Localizer["Required"]">*</span></label>
+                        <input asp-for="ProductName" class="form-control" aria-required="true" placeholder="@Localizer["ProductName"]" />
+                        <div class="form-help">@Localizer["ProductNameHelp"]</div>
+                        <span asp-validation-for="ProductName" class="field-validation-error small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="ProductNameEnglish">@Localizer["ProductNameEnglish"]</label>
+                        <input asp-for="ProductNameEnglish" class="form-control" placeholder="@Localizer["ProductNameEnglish"]" />
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title"><i class="bi bi-sliders"></i>@Localizer["Configuration"]</div>
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <label class="form-label" asp-for="Category">@Localizer["Category"]</label>
+                            <input asp-for="Category" class="form-control" placeholder="@Localizer["Category"]" />
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label" asp-for="Unit">@Localizer["Unit"]</label>
+                            <input asp-for="Unit" class="form-control" placeholder="@Localizer["Unit"]" />
+                            <div class="form-help">@Localizer["UnitHelp"]</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" data-submit-btn>
+                        <span class="btn-spinner" aria-hidden="true"></span>
+                        <i class="bi bi-check-lg btn-label-icon"></i>@Localizer["Save"]
+                    </button>
+                    <a class="btn btn-outline-secondary" asp-action="Index">@Localizer["Cancel"]</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="preview-pane">
+        <div class="preview-card">
+            <div class="preview-eyebrow"><i class="bi bi-eye"></i>@Localizer["LivePreview"]</div>
+            <div class="d-flex align-items-start gap-3 mb-3">
+                <span class="kpi-icon text-white" style="background:linear-gradient(135deg,var(--primary-color),var(--primary-dark));"><i class="bi bi-box-seam"></i></span>
+                <div class="min-w-0">
+                    <h5 class="preview-title mb-1" data-preview-for="ProductName" data-preview="text" data-empty="@Localizer["ProductName"]">@Localizer["ProductName"]</h5>
+                    <p class="preview-subtitle mb-0" data-preview-for="ProductCode" data-preview="text" data-empty="@Localizer["ProductCode"]">@Localizer["ProductCode"]</p>
+                </div>
+            </div>
+            <div class="preview-row"><span class="k">@Localizer["Category"]</span><span class="v preview-empty" data-preview-for="Category" data-preview="text" data-empty="@Localizer["NotSet"]">@Localizer["NotSet"]</span></div>
+            <div class="preview-row"><span class="k">@Localizer["Unit"]</span><span class="v preview-empty" data-preview-for="Unit" data-preview="text" data-empty="@Localizer["NotSet"]">@Localizer["NotSet"]</span></div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

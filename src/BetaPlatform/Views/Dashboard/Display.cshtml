@@ -1,0 +1,110 @@
+@using BetaPlatform.Data.Entities
+@model BetaPlatform.ViewModels.Dashboard.DashboardViewModel
+@{
+    Layout = "_DisplayLayout";
+    ViewData["Title"] = Localizer["ProductionDisplay"].Value;
+
+    string StateBadge(MachineRunningState state) => state switch
+    {
+        MachineRunningState.Running => "status-running",
+        MachineRunningState.Stopped => "status-stopped",
+        _ => "status-idle"
+    };
+    string StateText(MachineRunningState state) => state switch
+    {
+        MachineRunningState.Running => Localizer["Running"].Value,
+        MachineRunningState.Stopped => Localizer["Stopped"].Value,
+        _ => Localizer["Unknown"].Value
+    };
+    string Inv(decimal v) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    string GaugeCol(decimal v) => v >= 85 ? "var(--success)" : v >= 50 ? "var(--warning)" : "var(--danger)";
+
+    var machines = Model.Machines;
+    var single = machines.Count == 1;
+}
+
+<div class="display-shell">
+    @* Both states are always in the DOM so display.js can swap between them in place, without
+       rebuilding the page, when the last machine is deactivated or the first one is added. *@
+    <div class="display-empty" id="displayEmpty" hidden="@(machines.Any() ? "hidden" : null)">
+        <i class="bi bi-gear-wide-connected" aria-hidden="true"></i>
+        <p class="display-empty-title">@Localizer["DisplayNoMachinesTitle"]</p>
+        <p class="display-empty-text">@Localizer["DisplayNoMachinesText"]</p>
+    </div>
+
+    <div class="display-grid @(single ? "display-grid-single" : "")" id="displayGrid" hidden="@(machines.Any() ? null : "hidden")">
+        @foreach (var m in machines.Take(6))
+        {
+            var oee = m.Oee?.Value ?? 0;
+            <div class="display-tile">
+                <div class="display-tile-head">
+                    <div class="min-w-0">
+                        <p class="display-name">@m.MachineName</p>
+                        <p class="display-code">@m.MachineCode</p>
+                    </div>
+                    <span class="status-badge display-status @StateBadge(m.Status)">@StateText(m.Status)</span>
+                </div>
+
+                <div class="display-tile-main">
+                    <div class="gauge display-gauge" style="--val:@Inv(oee); --col:@GaugeCol(oee)">
+                        <div class="gauge-hole">
+                            <span class="gauge-num">@oee.ToString("F0")<small>%</small><span class="gauge-cap">@Localizer["OEE"]</span></span>
+                        </div>
+                    </div>
+                    <div class="display-stats">
+                        <div class="display-stat"><span class="d-val">@(m.Power?.Kw?.ToString("F1") ?? "—")</span><span class="d-lab">@Localizer["Power"] kW</span></div>
+                        <div class="display-stat"><span class="d-val">@(m.Oee is null ? "—" : m.Oee.TotalWeight.ToString("F0"))</span><span class="d-lab">@Localizer["TotalWeight"]</span></div>
+                        <div class="display-stat"><span class="d-val">@(m.Oee is null ? "—" : m.Oee.TotalCount.ToString("F0"))</span><span class="d-lab">@Localizer["TotalCount"]</span></div>
+                        <div class="display-stat"><span class="d-val">@m.InputWeight.ToString("F1")</span><span class="d-lab">@Localizer["InputWeight"]</span></div>
+                    </div>
+                </div>
+
+                <div class="display-bars">
+                    <div class="display-bar-row">
+                        <span class="d-blab">@Localizer["Availability"]</span>
+                        <div class="progress"><div class="progress-bar bg-success" style="width:@Inv(m.Oee?.Availability ?? 0)%"></div></div>
+                        <span class="d-bval">@((m.Oee?.Availability ?? 0).ToString("F0"))%</span>
+                    </div>
+                    <div class="display-bar-row">
+                        <span class="d-blab">@Localizer["Performance"]</span>
+                        <div class="progress"><div class="progress-bar bg-info" style="width:@Inv(m.Oee?.Performance ?? 0)%"></div></div>
+                        <span class="d-bval">@((m.Oee?.Performance ?? 0).ToString("F0"))%</span>
+                    </div>
+                    <div class="display-bar-row">
+                        <span class="d-blab">@Localizer["Quality"]</span>
+                        <div class="progress"><div class="progress-bar bg-warning" style="width:@Inv(m.Oee?.Quality ?? 0)%"></div></div>
+                        <span class="d-bval">@((m.Oee?.Quality ?? 0).ToString("F0"))%</span>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="display-foot">
+        <span class="display-page" id="displayPage" hidden="@(machines.Count > 6 ? null : "hidden")">@Localizer["PageIndicator"] <span id="displayPageNum">1 / @(Math.Max(1, (int)Math.Ceiling(machines.Count / 6.0)))</span></span>
+        <span class="display-stamp" id="displayStamp"></span>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        window.displayConfig = {
+            labels: {
+                running: '@Localizer["Running"]',
+                stopped: '@Localizer["Stopped"]',
+                unknown: '@Localizer["Unknown"]',
+                oee: '@Localizer["OEE"]',
+                power: '@Localizer["Power"]',
+                availability: '@Localizer["Availability"]',
+                performance: '@Localizer["Performance"]',
+                quality: '@Localizer["Quality"]',
+                totalWeight: '@Localizer["TotalWeight"]',
+                totalCount: '@Localizer["TotalCount"]',
+                inputWeight: '@Localizer["InputWeight"]',
+                page: '@Localizer["PageIndicator"]',
+                lastUpdated: '@Localizer["LastUpdated"]'
+            }
+        };
+    </script>
+    <script src="~/js/display.js" asp-append-version="true"></script>
+}

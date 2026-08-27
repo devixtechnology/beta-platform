@@ -1,0 +1,21 @@
+@model BetaPlatform.ViewModels.Machines.MachineDetailsViewModel
+@*
+    Configuration and labels for wwwroot/js/machine-details.js, passed the way Dashboard/Index
+    passes window.betaLabels. Rendered from both branches of Details.cshtml so a machine that is
+    not reporting telemetry still polls and recovers on its own when readings start arriving.
+*@
+<script>
+    window.machineLive = {
+        machineId: @Model.Machine.MachineId,
+        // True when the page was rendered without any telemetry, so the KPI markup is absent.
+        renderedEmpty: @((Model.LatestOee == null && Model.LatestPower == null).ToString().ToLowerInvariant()),
+        workOrderUrlBase: '@Url.Content("~/WorkOrders/Details/")',
+        labels: {
+            running: '@Localizer["Running"]',
+            stopped: '@Localizer["Stopped"]',
+            unknown: '@Localizer["Unknown"]',
+            lastUpdated: '@Localizer["LastUpdated"]'
+        }
+    };
+</script>
+<script src="~/js/machine-details.js" asp-append-version="true"></script>

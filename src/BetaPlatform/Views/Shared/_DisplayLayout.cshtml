@@ -1,0 +1,39 @@
+@using Microsoft.AspNetCore.Localization
+@{
+    var requestCulture = Context.Features.Get<IRequestCultureFeature>();
+    var currentCulture = requestCulture?.RequestCulture.UICulture.Name ?? "en";
+    var isRtl = currentCulture == "ar";
+}
+@*
+    Chromeless layout for the wall-mounted production screen (004, client comment 6).
+
+    Deliberately a separate layout rather than _Layout with things hidden: there is no navbar,
+    footer, language switcher or theme toggle to hide, because a screen nobody stands in front of
+    should offer nothing to click. The dark theme is fixed — the display runs all day in a lit
+    workspace and is configured once, then left alone — and the body never scrolls: the view either
+    fits or it rotates (FR-033/FR-036).
+
+    It links the same site.css as the rest of the platform, so a design-token change lands here too.
+*@
+<!DOCTYPE html>
+<html lang="@currentCulture" dir="@(isRtl ? "rtl" : "ltr")" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - @Localizer["AppName"]</title>
+    @if (isRtl)
+    {
+        <link href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" rel="stylesheet" asp-append-version="true">
+    }
+    else
+    {
+        <link href="~/lib/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" asp-append-version="true">
+    }
+    <link href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" rel="stylesheet" asp-append-version="true">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="display-body">
+    @RenderBody()
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

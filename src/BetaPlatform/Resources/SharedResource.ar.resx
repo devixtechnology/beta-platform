@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="AppName" xml:space="preserve"><value>EdgeView</value></data>
+  <data name="AppTagline" xml:space="preserve"><value>EdgeView</value></data>
+  <data name="Dashboard" xml:space="preserve"><value>لوحة التحكم</value></data>
+  <data name="Machines" xml:space="preserve"><value>الآلات</value></data>
+  <data name="Products" xml:space="preserve"><value>المنتجات</value></data>
+  <data name="WorkOrders" xml:space="preserve"><value>أوامر التشغيل</value></data>
+  <data name="Login" xml:space="preserve"><value>تسجيل الدخول</value></data>
+  <data name="Logout" xml:space="preserve"><value>تسجيل الخروج</value></data>
+  <data name="SignIn" xml:space="preserve"><value>دخول</value></data>
+  <data name="Email" xml:space="preserve"><value>البريد الإلكتروني</value></data>
+  <data name="Password" xml:space="preserve"><value>كلمة المرور</value></data>
+  <data name="Administrator" xml:space="preserve"><value>مدير النظام</value></data>
+  <data name="Language" xml:space="preserve"><value>اللغة</value></data>
+  <data name="Create" xml:space="preserve"><value>إنشاء</value></data>
+  <data name="Edit" xml:space="preserve"><value>تعديل</value></data>
+  <data name="Save" xml:space="preserve"><value>حفظ</value></data>
+  <data name="Cancel" xml:space="preserve"><value>إلغاء</value></data>
+  <data name="Delete" xml:space="preserve"><value>حذف</value></data>
+  <data name="Deactivate" xml:space="preserve"><value>إلغاء التفعيل</value></data>
+  <data name="Search" xml:space="preserve"><value>بحث</value></data>
+  <data name="Actions" xml:space="preserve"><value>إجراءات</value></data>
+  <data name="Status" xml:space="preserve"><value>الحالة</value></data>
+  <data name="Active" xml:space="preserve"><value>نشط</value></data>
+  <data name="Inactive" xml:space="preserve"><value>غير نشط</value></data>
+  <data name="Name" xml:space="preserve"><value>الاسم</value></data>
+  <data name="Code" xml:space="preserve"><value>الرمز</value></data>
+  <data name="Back" xml:space="preserve"><value>رجوع</value></data>
+  <data name="ListView" xml:space="preserve"><value>عرض قائمة</value></data>
+  <data name="CardView" xml:space="preserve"><value>عرض بطاقات</value></data>
+  <data name="NoRecords" xml:space="preserve"><value>لا توجد سجلات</value></data>
+  <data name="Machine" xml:space="preserve"><value>آلة</value></data>
+  <data name="MachineName" xml:space="preserve"><value>اسم الآلة</value></data>
+  <data name="MachineCode" xml:space="preserve"><value>رمز الآلة</value></data>
+  <data name="MachineType" xml:space="preserve"><value>نوع الآلة</value></data>
+  <data name="ProductionLine" xml:space="preserve"><value>خط الإنتاج</value></data>
+  <data name="IsRunning" xml:space="preserve"><value>تعمل</value></data>
+  <data name="AddMachine" xml:space="preserve"><value>إضافة آلة</value></data>
+  <data name="EditMachine" xml:space="preserve"><value>تعديل آلة</value></data>
+  <data name="Running" xml:space="preserve"><value>تعمل</value></data>
+  <data name="Stopped" xml:space="preserve"><value>متوقفة</value></data>
+  <data name="Product" xml:space="preserve"><value>منتج</value></data>
+  <data name="ProductName" xml:space="preserve"><value>اسم المنتج</value></data>
+  <data name="ProductNameEnglish" xml:space="preserve"><value>اسم المنتج (بالإنجليزية)</value></data>
+  <data name="ProductCode" xml:space="preserve"><value>رمز المنتج</value></data>
+  <data name="Category" xml:space="preserve"><value>الفئة</value></data>
+  <data name="Unit" xml:space="preserve"><value>الوحدة</value></data>
+  <data name="AddProduct" xml:space="preserve"><value>إضافة منتج</value></data>
+  <data name="EditProduct" xml:space="preserve"><value>تعديل منتج</value></data>
+  <data name="WorkOrder" xml:space="preserve"><value>أمر تشغيل</value></data>
+  <data name="WorkOrderNumber" xml:space="preserve"><value>رقم أمر التشغيل</value></data>
+  <data name="InputProduct" xml:space="preserve"><value>منتج الإدخال</value></data>
+  <data name="OutputProduct" xml:space="preserve"><value>منتج الإخراج</value></data>
+  <data name="AssignedMachine" xml:space="preserve"><value>الآلة المخصصة</value></data>
+  <data name="PlannedStartTime" xml:space="preserve"><value>وقت البدء المخطط</value></data>
+  <data name="QtyToManufacture" xml:space="preserve"><value>الكمية المطلوب تصنيعها</value></data>
+  <data name="AddWorkOrder" xml:space="preserve"><value>إضافة أمر تشغيل</value></data>
+  <data name="EditWorkOrder" xml:space="preserve"><value>تعديل أمر تشغيل</value></data>
+  <data name="Details" xml:space="preserve"><value>تفاصيل</value></data>
+  <data name="Start" xml:space="preserve"><value>بدء</value></data>
+  <data name="Hold" xml:space="preserve"><value>إيقاف مؤقت</value></data>
+  <data name="Resume" xml:space="preserve"><value>استئناف</value></data>
+  <data name="Finish" xml:space="preserve"><value>إنهاء</value></data>
+  <data name="AddOutput" xml:space="preserve"><value>إضافة مخرج</value></data>
+  <data name="Outputs" xml:space="preserve"><value>المخرجات</value></data>
+  <data name="UniqueCode" xml:space="preserve"><value>الرمز الفريد</value></data>
+  <data name="Weight" xml:space="preserve"><value>الوزن</value></data>
+  <data name="SequenceNumber" xml:space="preserve"><value>التسلسل</value></data>
+  <data name="Notes" xml:space="preserve"><value>ملاحظات</value></data>
+  <data name="TotalOutputs" xml:space="preserve"><value>إجمالي المخرجات</value></data>
+  <data name="TotalWeight" xml:space="preserve"><value>الوزن الإجمالي</value></data>
+  <data name="StartedAt" xml:space="preserve"><value>بدأ في</value></data>
+  <data name="ActualRuntime" xml:space="preserve"><value>وقت التشغيل الفعلي (بدون الإيقاف المؤقت)</value></data>
+  <data name="FinishedAt" xml:space="preserve"><value>انتهى في</value></data>
+  <data name="Ready" xml:space="preserve"><value>جاهز</value></data>
+  <data name="InProgress" xml:space="preserve"><value>قيد التنفيذ</value></data>
+  <data name="OnHold" xml:space="preserve"><value>معلّق</value></data>
+  <data name="Finished" xml:space="preserve"><value>منتهٍ</value></data>
+  <data name="OEE" xml:space="preserve"><value>الفعالية الكلية</value></data>
+  <data name="Availability" xml:space="preserve"><value>التوفر</value></data>
+  <data name="Performance" xml:space="preserve"><value>الأداء</value></data>
+  <data name="Quality" xml:space="preserve"><value>الجودة</value></data>
+  <data name="Power" xml:space="preserve"><value>الطاقة</value></data>
+  <data name="UnitsProduced" xml:space="preserve"><value>الوحدات المنتجة</value></data>
+  <data name="TotalCount" xml:space="preserve"><value>العدد الإجمالي</value></data>
+  <data name="TotalGoods" xml:space="preserve"><value>الوحدات الجيدة</value></data>
+  <data name="Unknown" xml:space="preserve"><value>غير معروف</value></data>
+  <data name="NoTelemetry" xml:space="preserve"><value>لا توجد بيانات</value></data>
+  <data name="LiveMonitoring" xml:space="preserve"><value>المراقبة المباشرة</value></data>
+  <data name="LastUpdated" xml:space="preserve"><value>آخر تحديث</value></data>
+  <data name="ToggleTheme" xml:space="preserve"><value>تبديل السمة الفاتحة/الداكنة</value></data>
+  <data name="LivePreview" xml:space="preserve"><value>معاينة مباشرة</value></data>
+  <data name="Required" xml:space="preserve"><value>مطلوب</value></data>
+  <data name="Optional" xml:space="preserve"><value>اختياري</value></data>
+  <data name="NotSet" xml:space="preserve"><value>غير محدد</value></data>
+  <data name="BasicInfo" xml:space="preserve"><value>المعلومات الأساسية</value></data>
+  <data name="Configuration" xml:space="preserve"><value>الإعدادات</value></data>
+  <data name="ProductRouting" xml:space="preserve"><value>توجيه المنتج</value></data>
+  <data name="ScheduleQuantity" xml:space="preserve"><value>الجدولة والكمية</value></data>
+  <data name="MachineNameHelp" xml:space="preserve"><value>اسم واضح يظهر في لوحة المتابعة.</value></data>
+  <data name="MachineCodeHelp" xml:space="preserve"><value>معرّف فريد لهذه الماكينة.</value></data>
+  <data name="MachineTypeHelp" xml:space="preserve"><value>يحدد تجميع خط الإنتاج.</value></data>
+  <data name="ProductCodeHelp" xml:space="preserve"><value>رمز فريد لتعريف هذا المنتج.</value></data>
+  <data name="ProductNameHelp" xml:space="preserve"><value>يظهر بالعربية في جميع أنحاء النظام.</value></data>
+  <data name="UnitHelp" xml:space="preserve"><value>مثال: كجم، قطعة، صندوق.</value></data>
+  <data name="WorkOrderNumberHelp" xml:space="preserve"><value>مرجع فريد لأمر التشغيل هذا.</value></data>
+  <data name="QtyToManufactureHelp" xml:space="preserve"><value>الكمية المستهدفة للإنتاج.</value></data>
+  <data name="NoMachinesTitle" xml:space="preserve"><value>لا توجد ماكينات بعد</value></data>
+  <data name="NoMachinesText" xml:space="preserve"><value>أضف أول ماكينة لبدء متابعة الإنتاج.</value></data>
+  <data name="NoProductsTitle" xml:space="preserve"><value>لا توجد منتجات بعد</value></data>
+  <data name="NoProductsText" xml:space="preserve"><value>أنشئ منتجًا لاستخدامه في أوامر التشغيل.</value></data>
+  <data name="NoWorkOrdersTitle" xml:space="preserve"><value>لا توجد أوامر تشغيل بعد</value></data>
+  <data name="NoWorkOrdersText" xml:space="preserve"><value>أنشئ أمر تشغيل لبدء الإنتاج.</value></data>
+  <data name="View" xml:space="preserve"><value>عرض</value></data>
+  <data name="BackToMachines" xml:space="preserve"><value>العودة إلى الماكينات</value></data>
+  <data name="CurrentOEE" xml:space="preserve"><value>الكفاءة الحالية</value></data>
+  <data name="CurrentPower" xml:space="preserve"><value>الطاقة الحالية (كيلوواط)</value></data>
+  <data name="Production24h" xml:space="preserve"><value>الإنتاج (آخر ٢٤ ساعة)</value></data>
+  <data name="QualityRate" xml:space="preserve"><value>معدل الجودة</value></data>
+  <data name="AvgOee24h" xml:space="preserve"><value>متوسط الكفاءة (24 ساعة)</value></data>
+  <data name="OEEComponentsBreakdown" xml:space="preserve"><value>تفصيل مكونات الكفاءة</value></data>
+  <data name="Uptime24h" xml:space="preserve"><value>وقت التشغيل (آخر ٢٤ ساعة)</value></data>
+  <data name="Downtime24h" xml:space="preserve"><value>وقت التوقف (آخر ٢٤ ساعة)</value></data>
+  <data name="Energy24h" xml:space="preserve"><value>الطاقة (آخر ٢٤ ساعة)</value></data>
+  <data name="OEETrend24h" xml:space="preserve"><value>اتجاه الكفاءة (24 ساعة)</value></data>
+  <data name="PowerConsumption24h" xml:space="preserve"><value>استهلاك الطاقة (24 ساعة)</value></data>
+  <data name="HourlyProduction" xml:space="preserve"><value>الإنتاج بالساعة</value></data>
+  <data name="LiveElectricalParameters" xml:space="preserve"><value>القياسات الكهربائية المباشرة</value></data>
+  <data name="Voltage" xml:space="preserve"><value>الجهد</value></data>
+  <data name="Current" xml:space="preserve"><value>التيار</value></data>
+  <data name="Frequency" xml:space="preserve"><value>التردد</value></data>
+  <data name="AvgCurrent" xml:space="preserve"><value>متوسط التيار</value></data>
+  <data name="GoodUnits" xml:space="preserve"><value>الوحدات الجيدة</value></data>
+  <data name="Defects" xml:space="preserve"><value>العيوب</value></data>
+  <data name="NoTelemetryYet" xml:space="preserve"><value>لم يتم تسجيل أي بيانات لهذه الماكينة بعد.</value></data>
+  <data name="RememberMe" xml:space="preserve"><value>تذكرني</value></data>
+  <data name="PoweredBy" xml:space="preserve"><value>مدعوم من</value></data>
+  <data name="Overview" xml:space="preserve"><value>نظرة عامة</value></data>
+  <data name="ViewDetails" xml:space="preserve"><value>التفاصيل</value></data>
+  <data name="AverageOEE" xml:space="preserve"><value>متوسط الكفاءة</value></data>
+  <data name="TotalEnergy" xml:space="preserve"><value>إجمالي الطاقة (ك.و.س)</value></data>
+  <data name="FinishedWOs" xml:space="preserve"><value>أوامر الشغل المكتملة</value></data>
+  <data name="UniqueCodeAutoHint" xml:space="preserve"><value>يتم إنشاء الرمز الفريد تلقائيًا لكل ناتج.</value></data>
+  <data name="Output" xml:space="preserve"><value>الناتج</value></data>
+  <data name="Inputs" xml:space="preserve"><value>المدخلات</value></data>
+  <data name="AddInput" xml:space="preserve"><value>إضافة مدخل</value></data>
+  <data name="TotalInputWeight" xml:space="preserve"><value>إجمالي وزن المدخلات</value></data>
+  <data name="CostingCapacity" xml:space="preserve"><value>التكلفة والسعة</value></data>
+  <data name="HourRate" xml:space="preserve"><value>معدل الساعة</value></data>
+  <data name="HourRateHelp" xml:space="preserve"><value>التكلفة أو معدل الإنتاج في الساعة.</value></data>
+  <data name="LineSetupTime" xml:space="preserve"><value>زمن إعداد الخط</value></data>
+  <data name="LineSetupTimeHelp" xml:space="preserve"><value>زمن الإعداد بالدقائق.</value></data>
+  <data name="WorkstationCapability" xml:space="preserve"><value>قدرة محطة العمل / ساعة</value></data>
+  <data name="WorkstationCapabilityHelp" xml:space="preserve"><value>عدد الوحدات التي يمكن أن تنتجها المحطة في الساعة.</value></data>
+  <data name="Minutes" xml:space="preserve"><value>دقيقة</value></data>
+  <data name="Admin" xml:space="preserve"><value>مسؤول</value></data>
+  <data name="Client" xml:space="preserve"><value>عميل</value></data>
+  <data name="Role" xml:space="preserve"><value>الدور</value></data>
+  <data name="Users" xml:space="preserve"><value>المستخدمون</value></data>
+  <data name="UsersSubtitle" xml:space="preserve"><value>الحسابات التي يمكنها تسجيل الدخول إلى EdgeView</value></data>
+  <data name="AddUser" xml:space="preserve"><value>إضافة مستخدم</value></data>
+  <data name="EditUser" xml:space="preserve"><value>تعديل المستخدم</value></data>
+  <data name="NoUsersTitle" xml:space="preserve"><value>لا توجد حسابات مستخدمين بعد</value></data>
+  <data name="NoUsersText" xml:space="preserve"><value>أنشئ حسابًا لكل شخص يحتاج إلى الوصول.</value></data>
+  <data name="FullName" xml:space="preserve"><value>الاسم الكامل</value></data>
+  <data name="You" xml:space="preserve"><value>أنت</value></data>
+  <data name="CreatedAt" xml:space="preserve"><value>تاريخ الإنشاء</value></data>
+  <data name="Reactivate" xml:space="preserve"><value>إعادة التفعيل</value></data>
+  <data name="ConfirmDeactivateUser" xml:space="preserve"><value>إلغاء تفعيل هذا الحساب؟ سيتم تسجيل خروج المستخدم ورفض وصوله.</value></data>
+  <data name="ConfirmReactivateUser" xml:space="preserve"><value>إعادة تفعيل هذا الحساب؟</value></data>
+  <data name="Access" xml:space="preserve"><value>الصلاحيات</value></data>
+  <data name="AccessAndPassword" xml:space="preserve"><value>الصلاحيات وكلمة المرور</value></data>
+  <data name="UserEmailHelp" xml:space="preserve"><value>العنوان المستخدم لتسجيل الدخول. يجب أن يكون فريدًا.</value></data>
+  <data name="EmailReadOnlyHelp" xml:space="preserve"><value>لا يمكن تغيير بريد تسجيل الدخول بعد إنشاء الحساب.</value></data>
+  <data name="RoleHelp" xml:space="preserve"><value>المسؤولون يديرون الماكينات والمنتجات والمستخدمين. العملاء ينفذون أوامر التشغيل.</value></data>
+  <data name="DeactivateUserHelp" xml:space="preserve"><value>الحساب غير النشط لا يمكنه تسجيل الدخول، وتنتهي أي جلسة مفتوحة خلال دقيقة.</value></data>
+  <data name="ChangePassword" xml:space="preserve"><value>تغيير كلمة المرور</value></data>
+  <data name="ResetPassword" xml:space="preserve"><value>إعادة تعيين كلمة المرور</value></data>
+  <data name="InitialPassword" xml:space="preserve"><value>كلمة المرور الأولية</value></data>
+  <data name="CurrentPassword" xml:space="preserve"><value>كلمة المرور الحالية</value></data>
+  <data name="NewPassword" xml:space="preserve"><value>كلمة المرور الجديدة</value></data>
+  <data name="ConfirmPassword" xml:space="preserve"><value>تأكيد كلمة المرور</value></data>
+  <data name="PasswordPolicyHelp" xml:space="preserve"><value>٦ أحرف على الأقل، وتشمل حرفًا كبيرًا وحرفًا صغيرًا ورقمًا.</value></data>
+  <data name="ResetPasswordWarning" xml:space="preserve"><value>تتوقف كلمة المرور الحالية عن العمل فورًا. سلّم الكلمة الجديدة إلى صاحب الحساب مباشرة.</value></data>
+  <data name="AccessDenied" xml:space="preserve"><value>تم رفض الوصول</value></data>
+  <data name="AccessDeniedTitle" xml:space="preserve"><value>ليس لديك صلاحية للوصول إلى هذه الشاشة</value></data>
+  <data name="AccessDeniedText" xml:space="preserve"><value>هذه الشاشة مقصورة على المسؤولين. إذا كنت بحاجة إلى الوصول، فاطلب ذلك من أحد المسؤولين.</value></data>
+  <data name="BackToDashboard" xml:space="preserve"><value>العودة إلى لوحة التحكم</value></data>
+  <data name="NoData24h" xml:space="preserve"><value>لا توجد بيانات (آخر ٢٤ ساعة)</value></data>
+  <data name="WindowCovers" xml:space="preserve"><value>تغطي الفترة</value></data>
+  <data name="CurrentWorkOrder" xml:space="preserve"><value>أمر التشغيل الحالي</value></data>
+  <data name="PlannedQuantity" xml:space="preserve"><value>الكمية المخططة</value></data>
+  <data name="ElapsedTime" xml:space="preserve"><value>الوقت المنقضي</value></data>
+  <data name="OtherWorkOrdersInProgress" xml:space="preserve"><value>يوجد أكثر من أمر تشغيل قيد التنفيذ على هذه الماكينة.</value></data>
+  <data name="NoCurrentWorkOrderTitle" xml:space="preserve"><value>لا يوجد أمر تشغيل قيد التنفيذ</value></data>
+  <data name="NoCurrentWorkOrderText" xml:space="preserve"><value>لا يتم إنتاج أي شيء على هذه الماكينة حاليًا.</value></data>
+  <data name="InputWeight" xml:space="preserve"><value>وزن المدخلات</value></data>
+  <data name="ProductionDisplay" xml:space="preserve"><value>شاشة الإنتاج</value></data>
+  <data name="OpenDisplay" xml:space="preserve"><value>فتح الشاشة الكبيرة</value></data>
+  <data name="DisplayNoMachinesTitle" xml:space="preserve"><value>لا توجد ماكينات نشطة</value></data>
+  <data name="DisplayNoMachinesText" xml:space="preserve"><value>أضف ماكينة أو أعد تفعيلها لتظهر على هذه الشاشة.</value></data>
+  <data name="PageIndicator" xml:space="preserve"><value>صفحة</value></data>
+</root>

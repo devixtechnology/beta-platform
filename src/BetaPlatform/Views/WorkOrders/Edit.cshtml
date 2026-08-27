@@ -1,0 +1,117 @@
+@model BetaPlatform.Data.Entities.WorkOrder
+@{
+    ViewData["Title"] = Localizer["EditWorkOrder"].Value;
+    var products = ViewBag.Products as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var machines = ViewBag.Machines as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+}
+
+<div class="page-header">
+    <h1 class="page-title"><span class="title-icon"><i class="bi bi-pencil"></i></span>@Localizer["EditWorkOrder"]</h1>
+    <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.WorkOrderId"><i class="bi bi-arrow-left"></i>@Localizer["Cancel"]</a>
+</div>
+
+<form asp-action="Edit" asp-route-id="@Model.WorkOrderId" method="post" class="form-layout" data-live-form>
+    <input type="hidden" asp-for="WorkOrderId" />
+    <div class="form-pane">
+        <div class="card">
+            <div class="card-body p-4">
+                <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+                <div class="form-section">
+                    <div class="section-title"><i class="bi bi-info-circle"></i>@Localizer["BasicInfo"]</div>
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="WorkOrderNumber">@Localizer["WorkOrderNumber"] <span class="req" title="@Localizer["Required"]">*</span></label>
+                        <input asp-for="WorkOrderNumber" class="form-control" aria-required="true" />
+                        <div class="form-help">@Localizer["WorkOrderNumberHelp"]</div>
+                        <span asp-validation-for="WorkOrderNumber" class="field-validation-error small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="MachineId">@Localizer["AssignedMachine"] <span class="req" title="@Localizer["Required"]">*</span></label>
+                        <select asp-for="MachineId" asp-items="machines" class="form-select" aria-required="true"><option value="">—</option></select>
+                        <span asp-validation-for="MachineId" class="field-validation-error small"></span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title"><i class="bi bi-arrow-left-right"></i>@Localizer["ProductRouting"]</div>
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <label class="form-label" asp-for="InputProductId">@Localizer["InputProduct"] <span class="req" title="@Localizer["Required"]">*</span></label>
+                            <select asp-for="InputProductId" asp-items="products" class="form-select" aria-required="true"><option value="">—</option></select>
+                            <span asp-validation-for="InputProductId" class="field-validation-error small"></span>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label" asp-for="OutputProductId">@Localizer["OutputProduct"] <span class="req" title="@Localizer["Required"]">*</span></label>
+                            <select asp-for="OutputProductId" asp-items="products" class="form-select" aria-required="true"><option value="">—</option></select>
+                            <span asp-validation-for="OutputProductId" class="field-validation-error small"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title"><i class="bi bi-calendar-event"></i>@Localizer["ScheduleQuantity"]</div>
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <label class="form-label" asp-for="PlannedStartTime">@Localizer["PlannedStartTime"]</label>
+                            <input asp-for="PlannedStartTime" type="datetime-local" class="form-control" />
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label" asp-for="QtyToManufacture">@Localizer["QtyToManufacture"]</label>
+                            <input asp-for="QtyToManufacture" type="number" step="0.01" class="form-control" />
+                            <div class="form-help">@Localizer["QtyToManufactureHelp"]</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title"><i class="bi bi-cash-coin"></i>@Localizer["CostingCapacity"]</div>
+                    <div class="row g-3">
+                        <div class="col-sm-4">
+                            <label class="form-label" asp-for="HourRate">@Localizer["HourRate"]</label>
+                            <input asp-for="HourRate" type="number" step="0.01" min="0" class="form-control" />
+                            <div class="form-help">@Localizer["HourRateHelp"]</div>
+                        </div>
+                        <div class="col-sm-4">
+                            <label class="form-label" asp-for="LineSetupTimeMinutes">@Localizer["LineSetupTime"]</label>
+                            <input asp-for="LineSetupTimeMinutes" type="number" step="1" min="0" class="form-control" />
+                            <div class="form-help">@Localizer["LineSetupTimeHelp"]</div>
+                        </div>
+                        <div class="col-sm-4">
+                            <label class="form-label" asp-for="WorkstationCapabilityPerHour">@Localizer["WorkstationCapability"]</label>
+                            <input asp-for="WorkstationCapabilityPerHour" type="number" step="0.01" min="0" class="form-control" />
+                            <div class="form-help">@Localizer["WorkstationCapabilityHelp"]</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" data-submit-btn>
+                        <span class="btn-spinner" aria-hidden="true"></span>
+                        <i class="bi bi-check-lg btn-label-icon"></i>@Localizer["Save"]
+                    </button>
+                    <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.WorkOrderId">@Localizer["Cancel"]</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="preview-pane">
+        <div class="preview-card">
+            <div class="preview-eyebrow"><i class="bi bi-eye"></i>@Localizer["LivePreview"]</div>
+            <div class="d-flex align-items-start gap-3 mb-3">
+                <span class="kpi-icon text-white" style="background:linear-gradient(135deg,var(--primary-color),var(--primary-dark));"><i class="bi bi-clipboard-data"></i></span>
+                <div class="min-w-0">
+                    <h5 class="preview-title mb-1" data-preview-for="WorkOrderNumber" data-preview="text" data-empty="@Localizer["WorkOrderNumber"]">@Model.WorkOrderNumber</h5>
+                    <p class="preview-subtitle mb-0"><i class="bi bi-gear-fill me-1"></i><span data-preview-for="MachineId" data-preview="option" data-empty="@Localizer["AssignedMachine"]">@(Model.Machine?.MachineName ?? Localizer["AssignedMachine"].Value)</span></p>
+                </div>
+            </div>
+            <div class="preview-row"><span class="k">@Localizer["InputProduct"]</span><span class="v" data-preview-for="InputProductId" data-preview="option" data-empty="@Localizer["NotSet"]">@(Model.InputProduct?.ProductName ?? Localizer["NotSet"].Value)</span></div>
+            <div class="preview-row"><span class="k">@Localizer["OutputProduct"]</span><span class="v" data-preview-for="OutputProductId" data-preview="option" data-empty="@Localizer["NotSet"]">@(Model.OutputProduct?.ProductName ?? Localizer["NotSet"].Value)</span></div>
+            <div class="preview-row"><span class="k">@Localizer["QtyToManufacture"]</span><span class="v" data-preview-for="QtyToManufacture" data-preview="text" data-empty="@Localizer["NotSet"]">@Model.QtyToManufacture</span></div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

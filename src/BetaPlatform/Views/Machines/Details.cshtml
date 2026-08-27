@@ -1,0 +1,278 @@
+@using BetaPlatform.Data.Entities
+@model BetaPlatform.ViewModels.Machines.MachineDetailsViewModel
+@{
+    ViewData["Title"] = Model.Machine.MachineName;
+    var hasTelemetry = Model.LatestOee != null || Model.LatestPower != null;
+    // One status rule for every screen (004 - contracts/machine-status.md). The view no longer
+    // re-derives running state from OeeData.Status.
+    var statusClass = Model.RunningState switch
+    {
+        MachineRunningState.Running => "status-running",
+        MachineRunningState.Stopped => "status-stopped",
+        _ => "status-idle"
+    };
+    var statusText = Model.RunningState switch
+    {
+        MachineRunningState.Running => Localizer["Running"].Value,
+        MachineRunningState.Stopped => Localizer["Stopped"].Value,
+        _ => Localizer["Unknown"].Value
+    };
+    var qualityRate = Model.TotalProduction24h > 0 ? Model.TotalGoods24h * 100m / Model.TotalProduction24h : 0;
+    string J(object o) => System.Text.Json.JsonSerializer.Serialize(o);
+    string Inv(decimal v) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    string Hm(TimeSpan t) => $"{(int)t.TotalHours:D2}:{t.Minutes:D2}";
+    var wo = Model.CurrentWorkOrder;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span class="title-icon"><i class="bi bi-gear-fill"></i></span>@Model.Machine.MachineName
+            <span class="status-badge @statusClass ms-2" id="mdStatusBadge">@statusText</span>
+            @if (!Model.Machine.IsActive)
+            {
+                <span class="badge-inactive ms-2">@Localizer["Inactive"]</span>
+            }
+        </h1>
+        <p class="page-subtitle">@Localizer["MachineCode"]: @Model.Machine.MachineCode
+            @if (Model.Machine.MachineType != null) { <span>· @Model.Machine.MachineType.Name</span> }
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        @if (User.IsInRole("Admin"))
+        {
+            <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Machine.MachineId"><i class="bi bi-pencil"></i>@Localizer["Edit"]</a>
+        }
+        <a class="btn btn-outline-secondary" asp-action="Index"><i class="bi bi-arrow-left"></i>@Localizer["BackToMachines"]</a>
+    </div>
+</div>
+
+<!-- Current work order (004 - client comment 5). Rendered above the telemetry sections because a
+     machine can be running an order while its telemetry is silent - what it is producing must not
+     depend on whether the IoT writer is up. -->
+<div class="card mb-3" id="mdWorkOrderCard">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-clipboard-data me-2"></i>@Localizer["CurrentWorkOrder"]</span>
+        <span class="text-muted small" id="mdWoOthers" hidden>
+            <i class="bi bi-info-circle me-1"></i>@Localizer["OtherWorkOrdersInProgress"]
+        </span>
+    </div>
+    <div class="card-body">
+        <div id="mdWoContent" class="row g-3 align-items-center" hidden="@(wo is null ? "hidden" : null)">
+            <div class="col-md-3">
+                <p class="metric-label mb-1">@Localizer["WorkOrderNumber"]</p>
+                <p class="mb-0 fw-semibold"><a id="mdWoLink" href="@(wo is null ? "#" : Url.Action("Details", "WorkOrders", new { id = wo.WorkOrderId }))"><span id="mdWoNumber">@(wo?.WorkOrderNumber ?? "-")</span></a></p>
+            </div>
+            <div class="col-md-3">
+                <p class="metric-label mb-1">@Localizer["OutputProduct"]</p>
+                <p class="mb-0" id="mdWoProduct">@(wo?.OutputProductName ?? "-")</p>
+            </div>
+            <div class="col-md-2">
+                <p class="metric-label mb-1">@Localizer["PlannedQuantity"]</p>
+                <p class="mb-0" id="mdWoQty">@(wo is null ? "-" : wo.QtyToManufacture.ToString("F0"))</p>
+            </div>
+            <div class="col-md-2">
+                <p class="metric-label mb-1">@Localizer["InputWeight"]</p>
+                <p class="mb-0" id="mdWoInputWeight">@(wo is null ? "-" : wo.TotalInputWeight.ToString("F1"))</p>
+            </div>
+            <div class="col-md-2">
+                <p class="metric-label mb-1">@Localizer["ElapsedTime"]</p>
+                <p class="mb-0" id="mdWoElapsed">@(wo is null ? "-" : Hm(wo.ElapsedTime))</p>
+            </div>
+        </div>
+        <div id="mdWoEmpty" hidden="@(wo is null ? null : "hidden")">
+            @{
+                ViewData["EmptyIcon"] = "bi-clipboard-x";
+                ViewData["EmptyTitle"] = Localizer["NoCurrentWorkOrderTitle"].Value;
+                ViewData["EmptyText"] = Localizer["NoCurrentWorkOrderText"].Value;
+                ViewData["EmptyActionUrl"] = null;
+                ViewData["EmptyActionLabel"] = null;
+            }
+            <partial name="_EmptyState" />
+        </div>
+    </div>
+</div>
+
+@if (!hasTelemetry)
+{
+    ViewData["EmptyIcon"] = "bi-wifi-off";
+    ViewData["EmptyTitle"] = Localizer["NoTelemetry"].Value;
+    ViewData["EmptyText"] = Localizer["NoTelemetryYet"].Value;
+    <div class="card"><div class="card-body"><partial name="_EmptyState" /></div></div>
+    <p class="text-muted small mt-2 text-center"><i class="bi bi-arrow-repeat me-1"></i><span id="mdLastUpdated"></span></p>
+    <partial name="_MachineDetailsScripts" model="Model" />
+    return;
+}
+
+<!-- KPI cards -->
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="card card-hover h-100"><div class="card-body stat-card">
+            <span class="stat-icon" style="background:rgba(247,148,30,.14);color:var(--primary-color);"><i class="bi bi-speedometer2"></i></span>
+            <p class="stat-value"><span id="mdOee">@(Model.LatestOee?.OEE.ToString("F1") ?? "0.0")</span>%</p>
+            <p class="stat-label">@Localizer["CurrentOEE"]</p>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card card-hover h-100"><div class="card-body stat-card">
+            <span class="stat-icon" style="background:rgba(245,158,11,.14);color:var(--warning);"><i class="bi bi-lightning-charge-fill"></i></span>
+            <p class="stat-value" id="mdPower">@(Model.LatestPower?.KwHr?.ToString("F1") ?? "0.0")</p>
+            <p class="stat-label">@Localizer["CurrentPower"]</p>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card card-hover h-100"><div class="card-body stat-card">
+            <span class="stat-icon" style="background:rgba(6,182,212,.14);color:var(--info);"><i class="bi bi-box-seam"></i></span>
+            <p class="stat-value" id="mdProduction">@Model.TotalProduction24h.ToString("F0")</p>
+            <p class="stat-label">@Localizer["Production24h"]</p>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card card-hover h-100"><div class="card-body stat-card">
+            <span class="stat-icon" style="background:rgba(16,185,129,.14);color:var(--success);"><i class="bi bi-check-circle"></i></span>
+            <p class="stat-value"><span id="mdQualityRate">@qualityRate.ToString("F1")</span>%</p>
+            <p class="stat-label">@Localizer["QualityRate"]</p>
+        </div></div>
+    </div>
+</div>
+
+<!-- OEE breakdown -->
+<div class="card mb-3">
+    <div class="card-header"><i class="bi bi-bar-chart-fill me-2"></i>@Localizer["OEEComponentsBreakdown"]</div>
+    <div class="card-body">
+        <div class="row g-4">
+            <div class="col-md-4">
+                <label class="text-muted small mb-2 d-block">@Localizer["Availability"]</label>
+                <div class="oee-bar"><div class="oee-bar-fill avail" id="mdBarAvail" style="width:@Inv(Model.LatestOee?.Availability ?? 0)%"><span id="mdBarAvailVal">@((Model.LatestOee?.Availability ?? 0).ToString("F1"))%</span></div></div>
+            </div>
+            <div class="col-md-4">
+                <label class="text-muted small mb-2 d-block">@Localizer["Performance"]</label>
+                <div class="oee-bar"><div class="oee-bar-fill perf" id="mdBarPerf" style="width:@Inv(Model.LatestOee?.Performance ?? 0)%"><span id="mdBarPerfVal">@((Model.LatestOee?.Performance ?? 0).ToString("F1"))%</span></div></div>
+            </div>
+            <div class="col-md-4">
+                <label class="text-muted small mb-2 d-block">@Localizer["Quality"]</label>
+                <div class="oee-bar"><div class="oee-bar-fill qual" id="mdBarQual" style="width:@Inv(Model.LatestOee?.Quality ?? 0)%"><span id="mdBarQualVal">@((Model.LatestOee?.Quality ?? 0).ToString("F1"))%</span></div></div>
+            </div>
+        </div>
+        <!-- Duration-weighted, with an explicit "no data" bucket, and the period stated in words
+             rather than the ambiguous "24hrs" the client asked about (004 - FR-025/FR-027). -->
+        <div class="row g-3 mt-2">
+            <div class="col-md-3"><div class="metric"><p class="metric-value text-success" id="mdUptime">@Hm(Model.Uptime24h)</p><p class="metric-label">@Localizer["Uptime24h"]</p></div></div>
+            <div class="col-md-3"><div class="metric"><p class="metric-value text-danger" id="mdDowntime">@Hm(Model.Downtime24h)</p><p class="metric-label">@Localizer["Downtime24h"]</p></div></div>
+            <div class="col-md-3" id="mdNoDataWrap" hidden="@(Model.NoDataTime24h > TimeSpan.Zero ? null : "hidden")"><div class="metric"><p class="metric-value text-muted" id="mdNoData">@Hm(Model.NoDataTime24h)</p><p class="metric-label">@Localizer["NoData24h"]</p></div></div>
+            <div class="col-md-3"><div class="metric"><p class="metric-value text-warning"><span id="mdEnergy">@Model.TotalEnergy24h.ToString("F1")</span> kWh</p><p class="metric-label">@Localizer["Energy24h"]</p></div></div>
+        </div>
+        <p class="text-muted small mb-0 mt-2">
+            <i class="bi bi-clock-history me-1"></i>@Localizer["WindowCovers"]
+            @Model.WindowStart.ToString("yyyy-MM-dd HH:mm") &ndash; @Model.WindowEnd.ToString("yyyy-MM-dd HH:mm")
+        </p>
+    </div>
+</div>
+
+<!-- Charts row 1 -->
+<div class="row g-3 mb-3">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-graph-up me-2"></i>@Localizer["OEETrend24h"]</div>
+            <div class="card-body"><div class="chart-container"><canvas id="oeeChart"></canvas></div></div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-lightning-fill me-2"></i>@Localizer["PowerConsumption24h"]</div>
+            <div class="card-body"><div class="chart-container"><canvas id="powerChart"></canvas></div></div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts row 2 -->
+<div class="row g-3 mb-3">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-bar-chart-line me-2"></i>@Localizer["HourlyProduction"]</div>
+            <div class="card-body"><div class="chart-container"><canvas id="productionChart"></canvas></div></div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-activity me-2"></i>@Localizer["LiveElectricalParameters"]</div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-4"><div class="param-tile"><p class="p-label">@Localizer["Voltage"] V1</p><p class="p-value text-info"><span id="mdV1">@(Model.LatestPower?.V1?.ToString("F1") ?? "0.0")</span> V</p></div></div>
+                    <div class="col-4"><div class="param-tile"><p class="p-label">@Localizer["Voltage"] V2</p><p class="p-value text-info"><span id="mdV2">@(Model.LatestPower?.V2?.ToString("F1") ?? "0.0")</span> V</p></div></div>
+                    <div class="col-4"><div class="param-tile"><p class="p-label">@Localizer["Voltage"] V3</p><p class="p-value text-info"><span id="mdV3">@(Model.LatestPower?.V3?.ToString("F1") ?? "0.0")</span> V</p></div></div>
+                    <div class="col-4"><div class="param-tile"><p class="p-label">@Localizer["Current"] A1</p><p class="p-value text-warning"><span id="mdA1">@(Model.LatestPower?.A1?.ToString("F1") ?? "0.0")</span> A</p></div></div>
+                    <div class="col-4"><div class="param-tile"><p class="p-label">@Localizer["Current"] A2</p><p class="p-value text-warning"><span id="mdA2">@(Model.LatestPower?.A2?.ToString("F1") ?? "0.0")</span> A</p></div></div>
+                    <div class="col-4"><div class="param-tile"><p class="p-label">@Localizer["Current"] A3</p><p class="p-value text-warning"><span id="mdA3">@(Model.LatestPower?.A3?.ToString("F1") ?? "0.0")</span> A</p></div></div>
+                    <div class="col-6"><div class="param-tile"><p class="p-label">@Localizer["Frequency"]</p><p class="p-value text-success"><span id="mdFreq">@(Model.LatestPower?.Frequency?.ToString("F2") ?? "0.00")</span> Hz</p></div></div>
+                    <div class="col-6"><div class="param-tile"><p class="p-label">@Localizer["AvgCurrent"]</p><p class="p-value text-warning"><span id="mdAAvg">@(Model.LatestPower?.AAvg?.ToString("F1") ?? "0.0")</span> A</p></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<p class="text-muted small text-center"><i class="bi bi-arrow-repeat me-1"></i><span id="mdLastUpdated"></span></p>
+
+@section Scripts {
+    <partial name="_MachineDetailsScripts" model="Model" />
+    <script src="~/lib/chartjs/chart.umd.min.js" asp-append-version="true"></script>
+    <script>
+        (function () {
+            var css = getComputedStyle(document.documentElement);
+            var text = (css.getPropertyValue('--text') || '#f8fafc').trim();
+            var muted = (css.getPropertyValue('--text-muted') || '#94a3b8').trim();
+            var grid = 'rgba(148,163,184,0.15)';
+            if (window.Chart) {
+                Chart.defaults.color = muted;
+                Chart.defaults.font.family = "'Segoe UI', Tahoma, sans-serif";
+            }
+            var axis = { ticks: { color: muted }, grid: { color: grid } };
+
+            window.mdCharts = window.mdCharts || {};
+            window.mdCharts.oee = new Chart(document.getElementById('oeeChart'), {
+                type: 'line',
+                data: {
+                    labels: @Html.Raw(J(Model.OeeChartData.Select(d => d.Timestamp))),
+                    datasets: [
+                        { label: 'OEE %', data: @Html.Raw(J(Model.OeeChartData.Select(d => d.OEE))), borderColor: '#f7941e', backgroundColor: 'rgba(247,148,30,0.12)', tension: 0.4, fill: true },
+                        { label: '@Localizer["Availability"]', data: @Html.Raw(J(Model.OeeChartData.Select(d => d.Availability))), borderColor: '#10b981', tension: 0.4, borderDash: [5,5] },
+                        { label: '@Localizer["Performance"]', data: @Html.Raw(J(Model.OeeChartData.Select(d => d.Performance))), borderColor: '#06b6d4', tension: 0.4, borderDash: [5,5] },
+                        { label: '@Localizer["Quality"]', data: @Html.Raw(J(Model.OeeChartData.Select(d => d.Quality))), borderColor: '#f59e0b', tension: 0.4, borderDash: [5,5] }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' },
+                    plugins: { legend: { labels: { color: text } } },
+                    scales: { y: Object.assign({ beginAtZero: true, max: 100 }, axis), x: axis } }
+            });
+
+            window.mdCharts.power = new Chart(document.getElementById('powerChart'), {
+                type: 'line',
+                data: {
+                    labels: @Html.Raw(J(Model.PowerChartData.Select(d => d.Timestamp))),
+                    datasets: [
+                        { label: '@Localizer["Power"] (kW)', data: @Html.Raw(J(Model.PowerChartData.Select(d => d.KwHr))), borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.12)', tension: 0.4, fill: true, yAxisID: 'y' },
+                        { label: '@Localizer["Voltage"] (V)', data: @Html.Raw(J(Model.PowerChartData.Select(d => d.Voltage))), borderColor: '#06b6d4', tension: 0.4, yAxisID: 'y1' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' },
+                    plugins: { legend: { labels: { color: text } } },
+                    scales: { y: Object.assign({ position: 'left' }, axis), y1: { position: 'right', ticks: { color: muted }, grid: { drawOnChartArea: false } }, x: axis } }
+            });
+
+            window.mdCharts.production = new Chart(document.getElementById('productionChart'), {
+                type: 'bar',
+                data: {
+                    labels: @Html.Raw(J(Model.ProductionChartData.Select(d => d.Hour))),
+                    datasets: [
+                        { label: '@Localizer["GoodUnits"]', data: @Html.Raw(J(Model.ProductionChartData.Select(d => d.GoodCount))), backgroundColor: 'rgba(16,185,129,0.8)', stack: 's' },
+                        { label: '@Localizer["Defects"]', data: @Html.Raw(J(Model.ProductionChartData.Select(d => d.DefectCount))), backgroundColor: 'rgba(239,68,68,0.8)', stack: 's' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: text } } },
+                    scales: { y: Object.assign({ stacked: true, beginAtZero: true }, axis), x: Object.assign({ stacked: true }, axis) } }
+            });
+        })();
+    </script>
+}

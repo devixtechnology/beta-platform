@@ -1,0 +1,190 @@
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Localization
+@using BetaPlatform.Data.Entities
+@inject SignInManager<ApplicationUser> SignInManager
+@{
+    var requestCulture = Context.Features.Get<IRequestCultureFeature>();
+    var currentCulture = requestCulture?.RequestCulture.UICulture.Name ?? "en";
+    var isRtl = currentCulture == "ar";
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    string NavActive(string c) => string.Equals(currentController, c, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    var returnPath = $"{Context.Request.Path}{Context.Request.QueryString}";
+    var theme = Context.Request.Cookies["beta_theme"] == "dark" ? "dark" : "light";
+    var isAdmin = User.IsInRole("Admin");
+    var roleLabel = isAdmin ? Localizer["Administrator"] : Localizer["Client"];
+}
+<!DOCTYPE html>
+<html lang="@currentCulture" dir="@(isRtl ? "rtl" : "ltr")" data-bs-theme="@theme">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - @Localizer["AppName"]</title>
+    @if (isRtl)
+    {
+        <link href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" rel="stylesheet" asp-append-version="true">
+    }
+    else
+    {
+        <link href="~/lib/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" asp-append-version="true">
+    }
+    <link href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" rel="stylesheet" asp-append-version="true">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <script src="~/js/theme.js" asp-append-version="true"></script>
+</head>
+<body class="d-flex flex-column min-vh-100">
+@if (SignInManager.IsSignedIn(User))
+{
+    <nav class="navbar navbar-expand-lg glass fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center" asp-controller="Dashboard" asp-action="Index">
+                <img src="~/images/edgeview-logo.png" alt="@Localizer["AppName"]" class="brand-logo-img" style="height: 40px; width: auto;" />
+            </a>
+
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Menu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link @NavActive("Dashboard")" asp-controller="Dashboard" asp-action="Index">
+                            <i class="bi bi-speedometer2 me-1"></i> @Localizer["Dashboard"]
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @NavActive("Machines")" asp-controller="Machines" asp-action="Index">
+                            <i class="bi bi-gear-fill me-1"></i> @Localizer["Machines"]
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @NavActive("Products")" asp-controller="Products" asp-action="Index">
+                            <i class="bi bi-box-seam me-1"></i> @Localizer["Products"]
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @NavActive("WorkOrders")" asp-controller="WorkOrders" asp-action="Index">
+                            <i class="bi bi-clipboard-data me-1"></i> @Localizer["WorkOrders"]
+                        </a>
+                    </li>
+                    @if (isAdmin)
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @NavActive("Users")" asp-controller="Users" asp-action="Index">
+                                <i class="bi bi-people-fill me-1"></i> @Localizer["Users"]
+                            </a>
+                        </li>
+                    }
+                </ul>
+
+                <div class="d-flex align-items-center gap-2">
+                    <!-- Secondary brand (Beta) moved to the right per 003 rebrand -->
+                    <img src="~/images/beta-logo.jpeg" alt="Beta" class="brand-logo-img d-none d-md-inline me-1" style="height: 40px; width: auto;" />
+
+                    <!-- Theme toggle -->
+                    <partial name="_ThemeToggle" />
+
+                    <!-- Language Switcher -->
+                    <div class="dropdown">
+                        <button class="nav-icon-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-label="@Localizer["Language"]" title="@Localizer["Language"]">
+                            <i class="bi bi-globe2"></i>
+                            <span class="d-none d-md-inline ms-1">@(currentCulture == "ar" ? "العربية" : "English")</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <form asp-controller="Culture" asp-action="SetLanguage" method="post">
+                                    <input type="hidden" name="culture" value="en" />
+                                    <input type="hidden" name="returnUrl" value="@returnPath" />
+                                    <button type="submit" class="dropdown-item @(currentCulture == "en" ? "active" : "")"><span class="me-2">🇺🇸</span> English</button>
+                                </form>
+                            </li>
+                            <li>
+                                <form asp-controller="Culture" asp-action="SetLanguage" method="post">
+                                    <input type="hidden" name="culture" value="ar" />
+                                    <input type="hidden" name="returnUrl" value="@returnPath" />
+                                    <button type="submit" class="dropdown-item @(currentCulture == "ar" ? "active" : "")"><span class="me-2">🇸🇦</span> العربية</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- User -->
+                    <div class="dropdown">
+                        <button class="nav-icon-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-label="@User.Identity!.Name">
+                            <i class="bi bi-person-circle me-1"></i><span class="d-none d-md-inline">@User.Identity!.Name</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><span class="dropdown-item-text text-muted small">@roleLabel</span></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" asp-controller="Account" asp-action="ChangePassword">
+                                    <i class="bi bi-shield-lock me-2"></i> @Localizer["ChangePassword"]
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form asp-controller="Auth" asp-action="Logout" method="post" class="d-inline">
+                                    <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right me-2"></i> @Localizer["Logout"]</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+}
+
+<main role="main" class="flex-grow-1">
+    @if (SignInManager.IsSignedIn(User))
+    {
+        @if (TempData["Success"] != null || TempData["Error"] != null)
+        {
+            <div class="app-toast-stack" aria-live="polite" aria-atomic="true">
+                @if (TempData["Success"] != null)
+                {
+                    <div class="app-toast toast-success" role="status">
+                        <i class="bi bi-check-circle-fill app-toast-icon" aria-hidden="true"></i>
+                        <div class="app-toast-body">@TempData["Success"]</div>
+                        <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert" aria-label="Close" onclick="this.closest('.app-toast').remove()"></button>
+                    </div>
+                }
+                @if (TempData["Error"] != null)
+                {
+                    <div class="app-toast toast-error" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill app-toast-icon" aria-hidden="true"></i>
+                        <div class="app-toast-body">@TempData["Error"]</div>
+                        <button type="button" class="btn-close btn-close-sm" aria-label="Close" onclick="this.closest('.app-toast').remove()"></button>
+                    </div>
+                }
+            </div>
+        }
+        <div class="container-fluid p-4">
+            @RenderBody()
+        </div>
+    }
+    else
+    {
+        @RenderBody()
+    }
+</main>
+
+@if (SignInManager.IsSignedIn(User))
+{
+    <footer class="footer border-top py-3 mt-auto">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-center align-items-center gap-2 flex-wrap text-muted small">
+                <span>© @Localizer["AppName"]</span>
+                <span class="footer-sep">·</span>
+                <span>@Localizer["PoweredBy"]</span>
+                <img src="~/images/success-systems.png" alt="Success Systems" class="footer-brand" />
+            </div>
+        </div>
+    </footer>
+}
+
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js" asp-append-version="true"></script>
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/js/form-preview.js" asp-append-version="true" defer></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

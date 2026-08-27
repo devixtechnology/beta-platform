@@ -1,0 +1,120 @@
+@using BetaPlatform.Data.Entities
+@model BetaPlatform.ViewModels.Dashboard.DashboardViewModel
+@{
+    ViewData["Title"] = Localizer["Dashboard"].Value;
+    var running = Model.Machines.Count(m => m.Status == MachineRunningState.Running);
+    var total = Model.Machines.Count;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><span class="title-icon"><i class="bi bi-speedometer2"></i></span>@Localizer["LiveMonitoring"]</h1>
+        <p class="page-subtitle"><i class="bi bi-arrow-repeat me-1"></i><span id="lastUpdated"></span></p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a class="btn btn-outline-secondary" asp-action="Display" target="_blank" rel="noopener"
+           title="@Localizer["ProductionDisplay"]"><i class="bi bi-tv"></i>@Localizer["OpenDisplay"]</a>
+        <span class="status-badge running" id="runningCount">@running / @total @Localizer["Running"]</span>
+    </div>
+</div>
+
+@{
+    var s = Model.Summary;
+    string Pct(decimal v) => v.ToString("F1") + "%";
+    // OEE health color thresholds — shared with the live gauge in dashboard.js
+    string GaugeCol(decimal v) => v >= 85 ? "var(--success)" : v >= 50 ? "var(--warning)" : "var(--danger)";
+}
+<div class="row g-3 mb-4" id="overview">
+    <!-- Featured Average OEE gauge -->
+    <div class="col-lg-4">
+        <div class="card overview-hero card-hover h-100">
+            <div class="card-body">
+                <span class="overview-eyebrow"><i class="bi bi-speedometer2"></i>@Localizer["AverageOEE"]</span>
+                <div class="gauge gauge-lg" id="heroGauge" style="--val:@s.AverageOee.ToString(System.Globalization.CultureInfo.InvariantCulture); --col:@GaugeCol(s.AverageOee)">
+                    <div class="gauge-hole">
+                        <span class="gauge-num"><span id="heroGaugeVal">@s.AverageOee.ToString("F1")</span><small>%</small></span>
+                    </div>
+                </div>
+                <span class="overview-foot">
+                    <span class="pulse-dot @(running > 0 ? "running" : "")" id="heroPulse"></span>
+                    <span id="heroRunning">@running / @total</span> @Localizer["Running"]
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI tiles -->
+    <div class="col-lg-8">
+        <div class="row g-3 h-100">
+            <div class="col-6 col-md-4">
+                <div class="kpi-tile kpi-accent-warning h-100">
+                    <span class="kpi-tile-icon"><i class="bi bi-lightning-charge-fill"></i></span>
+                    <div><p class="kpi-tile-value" id="sumEnergy">@s.TotalEnergyKwh.ToString("F1")</p><p class="kpi-tile-label">@Localizer["TotalEnergy"]</p></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4">
+                <div class="kpi-tile kpi-accent-info h-100">
+                    <span class="kpi-tile-icon"><i class="bi bi-box-seam"></i></span>
+                    <div><p class="kpi-tile-value" id="sumUnits">@s.UnitsProduced.ToString("F0")</p><p class="kpi-tile-label">@Localizer["UnitsProduced"]</p></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4">
+                <div class="kpi-tile kpi-accent-success h-100">
+                    <span class="kpi-tile-icon"><i class="bi bi-clipboard-check"></i></span>
+                    <div><p class="kpi-tile-value" id="sumFinishedWos">@s.FinishedWorkOrders</p><p class="kpi-tile-label">@Localizer["FinishedWOs"]</p></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4">
+                <div class="kpi-tile kpi-accent-success h-100">
+                    <span class="kpi-tile-icon"><i class="bi bi-clock-history"></i></span>
+                    <div><p class="kpi-tile-value" id="sumAvailability">@Pct(s.Availability)</p><p class="kpi-tile-label">@Localizer["Availability"]</p></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4">
+                <div class="kpi-tile kpi-accent-info h-100">
+                    <span class="kpi-tile-icon"><i class="bi bi-graph-up-arrow"></i></span>
+                    <div><p class="kpi-tile-value" id="sumPerformance">@Pct(s.Performance)</p><p class="kpi-tile-label">@Localizer["Performance"]</p></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4">
+                <div class="kpi-tile kpi-accent-warning h-100">
+                    <span class="kpi-tile-icon"><i class="bi bi-patch-check"></i></span>
+                    <div><p class="kpi-tile-value" id="sumQuality">@Pct(s.Quality)</p><p class="kpi-tile-label">@Localizer["Quality"]</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-gear-fill me-2"></i>@Localizer["Machines"]</span>
+    </div>
+    <div class="card-body p-4">
+        <div class="row g-4" id="machineGrid">
+            @foreach (var m in Model.Machines)
+            {
+                @await Html.PartialAsync("_MachineCard", m)
+            }
+            @if (!Model.Machines.Any())
+            {
+                <div class="col-12"><div class="text-center text-muted py-5"><i class="bi bi-wifi-off d-block fs-3 mb-2"></i>@Localizer["NoRecords"]</div></div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        window.betaLabels = {
+            running: '@Localizer["Running"]', stopped: '@Localizer["Stopped"]', unknown: '@Localizer["Unknown"]',
+            oee: '@Localizer["OEE"]', power: '@Localizer["Power"]', availability: '@Localizer["Availability"]',
+            performance: '@Localizer["Performance"]', quality: '@Localizer["Quality"]',
+            totalWeight: '@Localizer["TotalWeight"]', totalCount: '@Localizer["TotalCount"]',
+            totalGoods: '@Localizer["TotalGoods"]', inputWeight: '@Localizer["InputWeight"]',
+            noTelemetry: '@Localizer["NoTelemetry"]', lastUpdated: '@Localizer["LastUpdated"]', runningWord: '@Localizer["Running"]',
+            details: '@Localizer["ViewDetails"]'
+        };
+    </script>
+    <script src="~/js/dashboard.js" asp-append-version="true"></script>
+}

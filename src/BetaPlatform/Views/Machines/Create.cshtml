@@ -1,0 +1,79 @@
+@model BetaPlatform.Data.Entities.Machine
+@{
+    ViewData["Title"] = Localizer["AddMachine"].Value;
+    var types = ViewBag.MachineTypes as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+}
+
+<div class="page-header">
+    <h1 class="page-title"><span class="title-icon"><i class="bi bi-plus-lg"></i></span>@Localizer["AddMachine"]</h1>
+    <a class="btn btn-outline-secondary" asp-action="Index"><i class="bi bi-arrow-left"></i>@Localizer["Cancel"]</a>
+</div>
+
+<form asp-action="Create" method="post" class="form-layout" data-live-form>
+    <div class="form-pane">
+        <div class="card">
+            <div class="card-body p-4">
+                <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+                <div class="form-section">
+                    <div class="section-title"><i class="bi bi-info-circle"></i>@Localizer["BasicInfo"]</div>
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="MachineName">@Localizer["MachineName"] <span class="req" title="@Localizer["Required"]">*</span></label>
+                        <input asp-for="MachineName" class="form-control" aria-required="true" placeholder="@Localizer["MachineName"]" />
+                        <div class="form-help">@Localizer["MachineNameHelp"]</div>
+                        <span asp-validation-for="MachineName" class="field-validation-error small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="MachineCode">@Localizer["MachineCode"] <span class="req" title="@Localizer["Required"]">*</span></label>
+                        <input asp-for="MachineCode" class="form-control" aria-required="true" placeholder="@Localizer["MachineCode"]" />
+                        <div class="form-help">@Localizer["MachineCodeHelp"]</div>
+                        <span asp-validation-for="MachineCode" class="field-validation-error small"></span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title"><i class="bi bi-sliders"></i>@Localizer["Configuration"]</div>
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="MachineTypeId">@Localizer["MachineType"]</label>
+                        <select asp-for="MachineTypeId" asp-items="types" class="form-select">
+                            <option value="">—</option>
+                        </select>
+                        <div class="form-help">@Localizer["MachineTypeHelp"]</div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" data-submit-btn>
+                        <span class="btn-spinner" aria-hidden="true"></span>
+                        <i class="bi bi-check-lg btn-label-icon"></i>@Localizer["Save"]
+                    </button>
+                    <a class="btn btn-outline-secondary" asp-action="Index">@Localizer["Cancel"]</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="preview-pane">
+        <div class="preview-card">
+            <div class="preview-eyebrow"><i class="bi bi-eye"></i>@Localizer["LivePreview"]</div>
+            <div class="card machine-card status-secondary mb-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h5 class="preview-title mb-1" data-preview-for="MachineName" data-preview="text" data-empty="@Localizer["MachineName"]">@Localizer["MachineName"]</h5>
+                            <p class="preview-subtitle mb-0" data-preview-for="MachineCode" data-preview="text" data-empty="@Localizer["MachineCode"]">@Localizer["MachineCode"]</p>
+                        </div>
+                        <span class="status-badge status-idle">@Localizer["Unknown"]</span>
+                    </div>
+                    <div class="small text-muted">
+                        <i class="bi bi-tag me-1"></i><span data-preview-for="MachineTypeId" data-preview="option" data-empty="@Localizer["MachineType"]" class="preview-empty">@Localizer["MachineType"]</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

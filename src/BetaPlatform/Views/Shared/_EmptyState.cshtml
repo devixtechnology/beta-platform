@@ -1,0 +1,33 @@
+@*
+    Reusable styled empty state. Set these keys in the parent view's ViewData
+    before rendering (partials inherit the parent ViewData):
+      EmptyIcon        - bootstrap-icon class (default: bi-inbox)
+      EmptyTitle       - heading text
+      EmptyText        - supporting message
+      EmptyActionUrl   - (optional) primary action href
+      EmptyActionLabel - (optional) primary action label
+      EmptyActionIcon  - (optional) primary action icon (default: bi-plus-lg)
+*@
+@{
+    var icon = (ViewData["EmptyIcon"] as string) ?? "bi-inbox";
+    var title = ViewData["EmptyTitle"] as string;
+    var text = ViewData["EmptyText"] as string;
+    var actionUrl = ViewData["EmptyActionUrl"] as string;
+    var actionLabel = ViewData["EmptyActionLabel"] as string;
+    var actionIcon = (ViewData["EmptyActionIcon"] as string) ?? "bi-plus-lg";
+}
+<div class="empty-state">
+    <span class="empty-icon"><i class="bi @icon" aria-hidden="true"></i></span>
+    @if (!string.IsNullOrEmpty(title))
+    {
+        <p class="empty-title">@title</p>
+    }
+    @if (!string.IsNullOrEmpty(text))
+    {
+        <p class="empty-text">@text</p>
+    }
+    @if (!string.IsNullOrEmpty(actionUrl) && !string.IsNullOrEmpty(actionLabel))
+    {
+        <a class="btn btn-primary" href="@actionUrl"><i class="bi @actionIcon" aria-hidden="true"></i>@actionLabel</a>
+    }
+</div>

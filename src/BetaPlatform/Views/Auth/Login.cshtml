@@ -1,0 +1,116 @@
+@using Microsoft.AspNetCore.Localization
+@model BetaPlatform.ViewModels.Auth.LoginViewModel
+@inject IConfiguration Configuration
+@inject IWebHostEnvironment Env
+@{
+    Layout = null;
+    var requestCulture = Context.Features.Get<IRequestCultureFeature>();
+    var currentCulture = requestCulture?.RequestCulture.UICulture.Name ?? "en";
+    var isRtl = currentCulture == "ar";
+    var showDefaults = Env.IsDevelopment();
+    var seedEmail = Configuration["AdminSeed:Email"] ?? "admin@beta.local";
+    var seedPassword = Configuration["AdminSeed:Password"] ?? "Admin@123";
+    var theme = Context.Request.Cookies["beta_theme"] == "dark" ? "dark" : "light";
+}
+<!DOCTYPE html>
+<html lang="@currentCulture" dir="@(isRtl ? "rtl" : "ltr")" data-bs-theme="@theme">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@Localizer["Login"] - @Localizer["AppName"]</title>
+    @if (isRtl)
+    {
+        <link href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" rel="stylesheet" asp-append-version="true">
+    }
+    else
+    {
+        <link href="~/lib/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" asp-append-version="true">
+    }
+    <link href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" rel="stylesheet" asp-append-version="true">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <!-- Language Switcher -->
+    <div class="position-fixed top-0 end-0 p-3" style="z-index: 1050;">
+        <div class="dropdown">
+            <a class="btn btn-outline-secondary btn-sm dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                <i class="bi bi-globe2 me-1"></i>@(currentCulture == "ar" ? "العربية" : "English")
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <form asp-controller="Culture" asp-action="SetLanguage" method="post">
+                        <input type="hidden" name="culture" value="en" />
+                        <input type="hidden" name="returnUrl" value="/Auth/Login" />
+                        <button type="submit" class="dropdown-item @(currentCulture == "en" ? "active" : "")"><span class="me-2">🇺🇸</span> English</button>
+                    </form>
+                </li>
+                <li>
+                    <form asp-controller="Culture" asp-action="SetLanguage" method="post">
+                        <input type="hidden" name="culture" value="ar" />
+                        <input type="hidden" name="returnUrl" value="/Auth/Login" />
+                        <button type="submit" class="dropdown-item @(currentCulture == "ar" ? "active" : "")"><span class="me-2">🇸🇦</span> العربية</button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="login-container">
+        <div class="login-card card fade-in">
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <img src="~/images/edgeview-logo.png" alt="@Localizer["AppName"]" class="login-logo-img mb-3" />
+                    <h2 class="fw-bold mb-1">@Localizer["AppName"]</h2>
+                </div>
+
+                <form asp-controller="Auth" asp-action="Login" method="post">
+                    <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+                    <div asp-validation-summary="All" class="alert alert-danger py-2 @(ViewData.ModelState.IsValid ? "d-none" : "")" role="alert"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Email" class="form-label">@Localizer["Email"]</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                            <input asp-for="Email" class="form-control" placeholder="@seedEmail" autofocus />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Password" class="form-label">@Localizer["Password"]</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                            <input asp-for="Password" class="form-control" placeholder="••••••••" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input asp-for="RememberMe" class="form-check-input" />
+                        <label asp-for="RememberMe" class="form-check-label small">@Localizer["RememberMe"]</label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 mb-3">
+                        <i class="bi bi-box-arrow-in-right me-2"></i> @Localizer["SignIn"]
+                    </button>
+                </form>
+
+                @if (showDefaults)
+                {
+                    <div class="mt-2 p-3 rounded" style="background: var(--surface-inset); border: 1px solid var(--border-soft);">
+                        <p class="text-muted small mb-2"><strong><i class="bi bi-info-circle me-1"></i>Default credentials</strong></p>
+                        <p class="mb-0 small"><strong>Admin:</strong> <code id="defEmail">@seedEmail</code> / <code id="defPassword">@seedPassword</code></p>
+                        <button type="button" id="fillDefaults" class="btn btn-sm btn-outline-primary w-100 mt-2">Use these</button>
+                    </div>
+                    <script>
+                        document.getElementById('fillDefaults').addEventListener('click', function () {
+                            document.getElementById('Email').value = document.getElementById('defEmail').textContent.trim();
+                            document.getElementById('Password').value = document.getElementById('defPassword').textContent.trim();
+                        });
+                    </script>
+                }
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js" asp-append-version="true"></script>
+</body>
+</html>

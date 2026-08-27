@@ -1,0 +1,95 @@
+@model List<BetaPlatform.ViewModels.Users.UserListViewModel>
+@{
+    ViewData["Title"] = Localizer["Users"].Value;
+    var currentUserEmail = User.Identity?.Name;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><span class="title-icon"><i class="bi bi-people-fill"></i></span>@Localizer["Users"]</h1>
+        <p class="page-subtitle">@Localizer["UsersSubtitle"]</p>
+    </div>
+    <a class="btn btn-primary" asp-action="Create"><i class="bi bi-person-plus"></i>@Localizer["AddUser"]</a>
+</div>
+
+@if (!Model.Any())
+{
+    ViewData["EmptyIcon"] = "bi-people";
+    ViewData["EmptyTitle"] = Localizer["NoUsersTitle"].Value;
+    ViewData["EmptyText"] = Localizer["NoUsersText"].Value;
+    ViewData["EmptyActionUrl"] = Url.Action("Create");
+    ViewData["EmptyActionLabel"] = Localizer["AddUser"].Value;
+    <div class="card"><div class="card-body">
+        <partial name="_EmptyState" />
+    </div></div>
+}
+else
+{
+    <div class="card"><div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col">@Localizer["Email"]</th>
+                        <th scope="col">@Localizer["FullName"]</th>
+                        <th scope="col">@Localizer["Role"]</th>
+                        <th scope="col">@Localizer["Status"]</th>
+                        <th scope="col">@Localizer["CreatedAt"]</th>
+                        <th scope="col" class="text-end">@Localizer["Actions"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var u in Model)
+                {
+                    <tr>
+                        <td>
+                            <span class="fw-semibold">@u.Email</span>
+                            @if (u.Email == currentUserEmail)
+                            {
+                                <span class="text-muted small ms-1">(@Localizer["You"])</span>
+                            }
+                        </td>
+                        <td>@u.FullName</td>
+                        <td>
+                            <span class="role-chip role-@u.Role.ToLowerInvariant()">
+                                <i class="bi @(u.Role == "Admin" ? "bi-shield-lock" : "bi-person") me-1" aria-hidden="true"></i>@Localizer[u.Role]
+                            </span>
+                        </td>
+                        <td>
+                            @if (u.IsActive)
+                            {
+                                <span class="status-badge status-running">@Localizer["Active"]</span>
+                            }
+                            else
+                            {
+                                <span class="badge-inactive">@Localizer["Inactive"]</span>
+                            }
+                        </td>
+                        <td class="text-muted small">@u.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@u.Id" title="@Localizer["Edit"]">
+                                <i class="bi bi-pencil" aria-hidden="true"></i><span class="visually-hidden">@Localizer["Edit"] @u.Email</span>
+                            </a>
+                            <a class="btn btn-sm btn-outline-primary" asp-action="ResetPassword" asp-route-id="@u.Id" title="@Localizer["ResetPassword"]">
+                                <i class="bi bi-key" aria-hidden="true"></i><span class="visually-hidden">@Localizer["ResetPassword"] @u.Email</span>
+                            </a>
+                            @if (u.Email != currentUserEmail)
+                            {
+                                <form asp-action="ToggleActive" asp-route-id="@u.Id" method="post" class="d-inline"
+                                      onsubmit="return confirm('@(u.IsActive ? Localizer["ConfirmDeactivateUser"].Value : Localizer["ConfirmReactivateUser"].Value)');">
+                                    <input type="hidden" name="isActive" value="@((!u.IsActive).ToString().ToLowerInvariant())" />
+                                    <button class="btn btn-sm @(u.IsActive ? "btn-outline-danger" : "btn-outline-success")"
+                                            title="@(u.IsActive ? Localizer["Deactivate"].Value : Localizer["Reactivate"].Value)">
+                                        <i class="bi @(u.IsActive ? "bi-slash-circle" : "bi-arrow-counterclockwise")" aria-hidden="true"></i>
+                                        <span class="visually-hidden">@(u.IsActive ? Localizer["Deactivate"].Value : Localizer["Reactivate"].Value) @u.Email</span>
+                                    </button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div></div>
+}

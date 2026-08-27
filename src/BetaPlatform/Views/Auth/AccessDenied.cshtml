@@ -1,0 +1,19 @@
+@{
+    ViewData["Title"] = Localizer["AccessDenied"].Value;
+}
+
+<div class="page-header">
+    <h1 class="page-title"><span class="title-icon"><i class="bi bi-shield-exclamation"></i></span>@Localizer["AccessDenied"]</h1>
+</div>
+
+@{
+    ViewData["EmptyIcon"] = "bi-shield-lock";
+    ViewData["EmptyTitle"] = Localizer["AccessDeniedTitle"].Value;
+    ViewData["EmptyText"] = Localizer["AccessDeniedText"].Value;
+    ViewData["EmptyActionUrl"] = Url.Action("Index", "Dashboard");
+    ViewData["EmptyActionLabel"] = Localizer["BackToDashboard"].Value;
+    ViewData["EmptyActionIcon"] = "bi-speedometer2";
+}
+<div class="card"><div class="card-body">
+    <partial name="_EmptyState" />
+</div></div>

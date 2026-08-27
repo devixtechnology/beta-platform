@@ -1,0 +1,69 @@
+@using BetaPlatform.Data.Entities
+@model List<BetaPlatform.Data.Entities.WorkOrder>
+@{
+    ViewData["Title"] = Localizer["WorkOrders"].Value;
+    string StatusText(WorkOrderStatus s) => s switch
+    {
+        WorkOrderStatus.Ready => Localizer["Ready"].Value,
+        WorkOrderStatus.InProgress => Localizer["InProgress"].Value,
+        WorkOrderStatus.OnHold => Localizer["OnHold"].Value,
+        WorkOrderStatus.Finished => Localizer["Finished"].Value,
+        _ => s.ToString()
+    };
+    string StatusClass(WorkOrderStatus s) => s switch
+    {
+        WorkOrderStatus.InProgress => "running",
+        WorkOrderStatus.OnHold => "stopped",
+        WorkOrderStatus.Finished => "unknown",
+        _ => "unknown"
+    };
+}
+
+<div class="page-header">
+    <h1 class="page-title"><span class="title-icon"><i class="bi bi-clipboard-data"></i></span>@Localizer["WorkOrders"]</h1>
+    <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg"></i>@Localizer["AddWorkOrder"]</a>
+</div>
+
+@if (!Model.Any())
+{
+    ViewData["EmptyIcon"] = "bi-clipboard-plus";
+    ViewData["EmptyTitle"] = Localizer["NoWorkOrdersTitle"].Value;
+    ViewData["EmptyText"] = Localizer["NoWorkOrdersText"].Value;
+    ViewData["EmptyActionUrl"] = Url.Action("Create");
+    ViewData["EmptyActionLabel"] = Localizer["AddWorkOrder"].Value;
+    <div class="card"><div class="card-body">
+        <partial name="_EmptyState" />
+    </div></div>
+}
+else
+{
+    <div class="card"><div class="card-body p-0">
+        <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>@Localizer["WorkOrderNumber"]</th>
+                    <th>@Localizer["OutputProduct"]</th>
+                    <th>@Localizer["AssignedMachine"]</th>
+                    <th>@Localizer["Status"]</th>
+                    <th class="text-end">@Localizer["Actions"]</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var w in Model)
+            {
+                <tr>
+                    <td><span class="fw-semibold">@w.WorkOrderNumber</span></td>
+                    <td>@w.OutputProduct?.ProductName</td>
+                    <td>@w.Machine?.MachineName</td>
+                    <td><span class="status-badge @StatusClass(w.Status)">@StatusText(w.Status)</span></td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@w.WorkOrderId"><i class="bi bi-eye me-1"></i>@Localizer["Details"]</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        </div>
+    </div></div>
+}

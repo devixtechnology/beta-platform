@@ -1,0 +1,92 @@
+@using BetaPlatform.Data.Entities
+@model BetaPlatform.ViewModels.Dashboard.MachineDashboardDto
+@{
+    string statusColor = Model.Status switch { MachineRunningState.Running => "success", MachineRunningState.Stopped => "danger", _ => "secondary" };
+    string badgeClass = Model.Status switch { MachineRunningState.Running => "status-running", MachineRunningState.Stopped => "status-stopped", _ => "status-idle" };
+    bool live = Model.Status == MachineRunningState.Running;
+    string statusText = Model.Status switch
+    {
+        MachineRunningState.Running => Localizer["Running"].Value,
+        MachineRunningState.Stopped => Localizer["Stopped"].Value,
+        _ => Localizer["Unknown"].Value
+    };
+    var oee = Model.Oee?.Value ?? 0;
+    var avail = Model.Oee?.Availability ?? 0;
+    var perf = Model.Oee?.Performance ?? 0;
+    var qual = Model.Oee?.Quality ?? 0;
+    string GaugeCol(decimal v) => v >= 85 ? "var(--success)" : v >= 50 ? "var(--warning)" : "var(--danger)";
+    string Inv(decimal v) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+}
+<div class="col-xl-4 col-md-6">
+    <div class="card machine-card status-@statusColor h-100">
+        <div class="card-body">
+            <div class="mc-head">
+                <div class="min-w-0">
+                    <h5 class="mc-name text-truncate">@Model.MachineName</h5>
+                    <p class="mc-code">@Model.MachineCode</p>
+                </div>
+                <span class="status-badge @badgeClass @(live ? "mc-live" : "")">@statusText</span>
+            </div>
+
+            @if (Model.HasTelemetry && Model.Oee != null)
+            {
+                <div class="mc-main">
+                    <div class="gauge" style="--val:@Inv(oee); --col:@GaugeCol(oee)">
+                        <div class="gauge-hole">
+                            <span class="gauge-num">@oee.ToString("F0")<small>%</small><span class="gauge-cap">@Localizer["OEE"]</span></span>
+                        </div>
+                    </div>
+                    <div class="mc-stats">
+                        <div class="mc-stat">
+                            <span class="s-val">@(Model.Power?.Kw?.ToString("F1") ?? "0.0") <small class="text-muted">kW</small></span>
+                            <span class="s-lab">@Localizer["Power"]</span>
+                        </div>
+                        <div class="mc-stat">
+                            <span class="s-val">@Model.Oee.TotalWeight.ToString("F0")</span>
+                            <span class="s-lab">@Localizer["TotalWeight"]</span>
+                        </div>
+                        <div class="mc-stat">
+                            <span class="s-val">@Model.Oee.TotalCount.ToString("F0")</span>
+                            <span class="s-lab">@Localizer["TotalCount"]</span>
+                        </div>
+                        <div class="mc-stat">
+                            @* Input Weight replaces Good Units here (004, client comment 7). TotalGoods
+                               stays in the payload — the details page still needs it for quality rate. *@
+                            <span class="s-val">@Model.InputWeight.ToString("F1")</span>
+                            <span class="s-lab">@Localizer["InputWeight"]</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mc-bars">
+                    <div class="mc-bar-row">
+                        <span class="b-lab">@Localizer["Availability"]</span>
+                        <div class="progress"><div class="progress-bar bg-success" style="width:@Inv(avail)%"></div></div>
+                        <span class="b-val">@avail.ToString("F0")%</span>
+                    </div>
+                    <div class="mc-bar-row">
+                        <span class="b-lab">@Localizer["Performance"]</span>
+                        <div class="progress"><div class="progress-bar bg-info" style="width:@Inv(perf)%"></div></div>
+                        <span class="b-val">@perf.ToString("F0")%</span>
+                    </div>
+                    <div class="mc-bar-row">
+                        <span class="b-lab">@Localizer["Quality"]</span>
+                        <div class="progress"><div class="progress-bar bg-warning" style="width:@Inv(qual)%"></div></div>
+                        <span class="b-val">@qual.ToString("F0")%</span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-wifi-off fs-3"></i>
+                    <div class="small mt-2">@Localizer["NoTelemetry"]</div>
+                </div>
+            }
+
+            <a class="btn btn-sm btn-outline-primary w-100" asp-controller="Machines" asp-action="Details" asp-route-id="@Model.MachineId">
+                <i class="bi bi-eye me-1"></i>@Localizer["ViewDetails"]
+            </a>
+        </div>
+    </div>
+</div>

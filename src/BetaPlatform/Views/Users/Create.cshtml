@@ -1,0 +1,85 @@
+@model BetaPlatform.ViewModels.Users.UserFormViewModel
+@{
+    ViewData["Title"] = Localizer["AddUser"].Value;
+}
+
+<div class="page-header">
+    <h1 class="page-title"><span class="title-icon"><i class="bi bi-person-plus"></i></span>@Localizer["AddUser"]</h1>
+    <a class="btn btn-outline-secondary" asp-action="Index"><i class="bi bi-arrow-left"></i>@Localizer["Cancel"]</a>
+</div>
+
+<form asp-action="Create" method="post" class="form-layout" data-live-form>
+    <div class="form-pane">
+        <div class="card">
+            <div class="card-body p-4">
+                <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+                <div class="form-section">
+                    <div class="section-title"><i class="bi bi-info-circle"></i>@Localizer["BasicInfo"]</div>
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Email">@Localizer["Email"] <span class="req" title="@Localizer["Required"]">*</span></label>
+                        <input asp-for="Email" type="email" class="form-control" autocomplete="off" aria-required="true" placeholder="name@company.com" />
+                        <div class="form-help">@Localizer["UserEmailHelp"]</div>
+                        <span asp-validation-for="Email" class="field-validation-error small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="FullName">@Localizer["FullName"] <span class="req" title="@Localizer["Required"]">*</span></label>
+                        <input asp-for="FullName" class="form-control" aria-required="true" placeholder="@Localizer["FullName"]" />
+                        <span asp-validation-for="FullName" class="field-validation-error small"></span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title"><i class="bi bi-shield-lock"></i>@Localizer["AccessAndPassword"]</div>
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Role">@Localizer["Role"] <span class="req" title="@Localizer["Required"]">*</span></label>
+                        <select asp-for="Role" class="form-select" aria-required="true">
+                            @foreach (var role in BetaPlatform.Services.UserAdminService.AssignableRoles)
+                            {
+                                <option value="@role" selected="@(Model.Role == role)">@Localizer[role]</option>
+                            }
+                        </select>
+                        <div class="form-help">@Localizer["RoleHelp"]</div>
+                        <span asp-validation-for="Role" class="field-validation-error small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Password">@Localizer["InitialPassword"] <span class="req" title="@Localizer["Required"]">*</span></label>
+                        <input asp-for="Password" type="password" class="form-control" autocomplete="new-password" aria-required="true" aria-describedby="passwordPolicy" />
+                        <div class="form-help" id="passwordPolicy">@Localizer["PasswordPolicyHelp"]</div>
+                        <span asp-validation-for="Password" class="field-validation-error small"></span>
+                    </div>
+                    <div class="form-check">
+                        <input asp-for="IsActive" class="form-check-input" />
+                        <label asp-for="IsActive" class="form-check-label">@Localizer["Active"]</label>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" data-submit-btn>
+                        <span class="btn-spinner" aria-hidden="true"></span>
+                        <i class="bi bi-check-lg btn-label-icon"></i>@Localizer["Save"]
+                    </button>
+                    <a class="btn btn-outline-secondary" asp-action="Index">@Localizer["Cancel"]</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="preview-pane">
+        <div class="preview-card">
+            <div class="preview-eyebrow"><i class="bi bi-eye"></i>@Localizer["LivePreview"]</div>
+            <div class="d-flex align-items-start gap-3 mb-3">
+                <span class="kpi-icon text-white" style="background:linear-gradient(135deg,var(--primary-color),var(--primary-dark));"><i class="bi bi-person-circle"></i></span>
+                <div class="min-w-0">
+                    <h5 class="preview-title mb-1" data-preview-for="FullName" data-preview="text" data-empty="@Localizer["FullName"]">@Localizer["FullName"]</h5>
+                    <p class="preview-subtitle mb-0" data-preview-for="Email" data-preview="text" data-empty="@Localizer["Email"]">@Localizer["Email"]</p>
+                </div>
+            </div>
+            <div class="preview-row"><span class="k">@Localizer["Role"]</span><span class="v" data-preview-for="Role" data-preview="option" data-empty="@Localizer["NotSet"]">@Localizer[Model.Role]</span></div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
