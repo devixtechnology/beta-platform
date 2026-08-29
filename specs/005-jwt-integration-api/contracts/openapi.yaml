@@ -1,0 +1,369 @@
+openapi: 3.0.3
+
+# Design-time contract for feature 005-jwt-integration-api.
+# The running app publishes the generated equivalent at /openapi/v1.json (FR-032); this file is the
+# agreed target that generation must match. Operations whose data is representative in this slice
+# are marked in their description (FR-033) — their SHAPES are final (FR-034).
+
+info:
+  title: Beta Platform Integration API
+  version: "1.0"
+  description: >
+    Sign in for a bearer token, renew it with a refresh token, read and add products,
+    and raise a work order.
+    Products are addressed by PRODUCT CODE; internal record numbers never appear in this contract.
+
+    SLICE NOTE: authentication, permissions and request validation are fully implemented.
+    The product and work-order operations return representative data and persist nothing;
+    responses marked "not yet produced" are specified here and will be produced unchanged
+    by the follow-up behaviour slice.
+
+servers:
+  - url: /api/v1
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Auth
+    description: Fully implemented.
+  - name: Products
+    description: Shapes final; data representative in this slice.
+  - name: WorkOrders
+    description: Shapes final; data representative in this slice.
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Sign in and receive a bearer token
+      description: >
+        Fully implemented. Unknown email, wrong password and deactivated account all return an
+        identical 401 so the response cannot be used as an account-existence oracle.
+      security: []          # the only anonymous operation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: >
+            Token pair issued. The access token is valid 8 hours; the refresh token 30 days.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '401':
+          description: Invalid credentials (unknown, wrong password, or deactivated).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Exchange a refresh token for a new token pair
+      description: >
+        Fully implemented. Anonymous — the refresh token IS the credential, and a caller whose
+        access token has expired has nothing else to present.
+
+        Renewal ROTATES: the response carries a new refresh token and the caller stores it in
+        place of the one it presented. Roles and the account's active state are re-read from the
+        platform on every renewal, so a deactivated account, a rotated security stamp (deactivation
+        or a password change) or a withdrawn role takes effect at the next renewal rather than at
+        the end of the refresh window.
+
+        Every failure — expired, altered, unknown, an access token presented in its place, or an
+        account that may no longer use it — returns one identical 401.
+      security: []          # the refresh token is the credential; no bearer token is required
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+      responses:
+        '200':
+          description: A new pair, in the same shape sign-in returns.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '400':
+          description: The request carries no refreshToken field. A token that is merely wrong is a 401, not this.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ValidationProblemDetails' }
+        '401':
+          description: Expired, altered, unknown, not a refresh token, or the account can no longer use it.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+
+  /products:
+    get:
+      tags: [Products]
+      summary: List products
+      description: Representative data in this slice. An empty catalogue is `[]`, never 404.
+      parameters:
+        - name: activeOnly
+          in: query
+          required: false
+          schema: { type: boolean, default: false }
+          description: Exclude deactivated products.
+      responses:
+        '200':
+          description: The catalogue.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Product' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+    post:
+      tags: [Products]
+      summary: Create a product
+      description: >
+        Admin only. Request validation is enforced; the product is NOT persisted in this slice.
+        The 409 duplicate-code response is specified but not yet produced.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateProductRequest' }
+      responses:
+        '201':
+          description: Created. A created product is always active.
+          headers:
+            Location:
+              schema: { type: string }
+              description: /api/v1/products/{productCode}
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /products/{productCode}:
+    get:
+      tags: [Products]
+      summary: Get one product by its product code
+      description: >
+        Representative data in this slice; the 404 is specified but not yet produced.
+        Codes are trimmed and matched case-insensitively. A deactivated product is returned
+        with isActive=false rather than reported missing.
+      parameters:
+        - name: productCode
+          in: path
+          required: true
+          schema: { type: string, maxLength: 50 }
+      responses:
+        '200':
+          description: The product.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /work-orders:
+    post:
+      tags: [WorkOrders]
+      summary: Create a work order, naming products by code
+      description: >
+        Admin or Client. Request validation is enforced; the order is NOT persisted in this slice.
+        Unresolvable product codes (400, naming which code) and a duplicate work-order number (409)
+        are specified but not yet produced. The same code may be both input and output — a rework
+        order legitimately consumes and produces the same product.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWorkOrderRequest' }
+      responses:
+        '201':
+          description: Created, always in status "Ready".
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkOrder' }
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        8-hour token from /auth/login. Renew it at /auth/refresh (which rotates the refresh token)
+        or by signing in again. Deactivating the account revokes it — and stops its renewals — on
+        the next request, without waiting for expiry. Changing a password does the same.
+
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:    { type: string, format: email }
+        password: { type: string, format: password }
+
+    RefreshRequest:
+      type: object
+      description: >
+        Only presence is validated. An expired, altered or unknown token is a rejected credential
+        (401), not a malformed request (400) — the same line /auth/login draws between a wrong
+        password and a missing one.
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string, format: password }
+
+    LoginResponse:
+      type: object
+      description: >
+        One shape for both /auth/login and /auth/refresh, so a caller writes one parser and one
+        "store these tokens" routine.
+      required: [accessToken, tokenType, expiresAt, refreshToken, refreshTokenExpiresAt, email, fullName, roles]
+      properties:
+        accessToken: { type: string }
+        tokenType:   { type: string, enum: [Bearer] }
+        expiresAt:
+          type: string
+          format: date-time
+          description: Absolute UTC expiry, so a caller need not time the response.
+        refreshToken:
+          type: string
+          format: password
+          description: >
+            Presented to /auth/refresh for a new pair. Rotated on every renewal, and as secret as
+            the password it stands in for — never put it in a URL or a log.
+        refreshTokenExpiresAt:
+          type: string
+          format: date-time
+          description: Absolute UTC expiry — 30 days from issue. After this, sign in with credentials again.
+        email:    { type: string, format: email }
+        fullName: { type: string }
+        roles:
+          type: array
+          items: { type: string, enum: [Admin, Client] }
+
+    Product:
+      type: object
+      description: One shape for reads and creates alike. Note the absence of any product id.
+      required: [productCode, productName, unit, isActive]
+      properties:
+        productCode:        { type: string, maxLength: 50 }
+        productName:        { type: string, maxLength: 200 }
+        productNameEnglish: { type: string, maxLength: 200, nullable: true }
+        category:           { type: string, maxLength: 100, nullable: true }
+        unit:               { type: string, maxLength: 20, example: kg }
+        isActive:           { type: boolean }
+
+    CreateProductRequest:
+      type: object
+      description: isActive is not accepted — a created product is always active.
+      required: [productCode, productName, unit]
+      properties:
+        productCode:        { type: string, minLength: 1, maxLength: 50 }
+        productName:        { type: string, minLength: 1, maxLength: 200 }
+        productNameEnglish: { type: string, maxLength: 200, nullable: true }
+        category:           { type: string, maxLength: 100, nullable: true }
+        unit:               { type: string, minLength: 1, maxLength: 20 }
+
+    CreateWorkOrderRequest:
+      type: object
+      required: [workOrderNumber, inputProductCode, outputProductCode, plannedStartTime, qtyToManufacture]
+      properties:
+        workOrderNumber:   { type: string, minLength: 1, maxLength: 50 }
+        inputProductCode:  { type: string, minLength: 1, description: Product CODE, not a record number. }
+        outputProductCode: { type: string, minLength: 1, description: Product CODE, not a record number. }
+        plannedStartTime:  { type: string, format: date-time }
+        qtyToManufacture:
+          type: number
+          format: double
+          exclusiveMinimum: true
+          minimum: 0
+          description: Must be greater than zero.
+        machineId:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: The one internal identifier retained — machines have no external code here.
+        hourRate:                     { type: number, format: double, nullable: true, minimum: 0 }
+        lineSetupTimeMinutes:         { type: integer, nullable: true, minimum: 0 }
+        workstationCapabilityPerHour: { type: number, format: double, nullable: true, minimum: 0 }
+
+    WorkOrder:
+      type: object
+      required: [workOrderNumber, inputProductCode, outputProductCode, status, plannedStartTime, qtyToManufacture]
+      properties:
+        workOrderNumber:   { type: string }
+        inputProductCode:  { type: string, description: Echoed as submitted. }
+        outputProductCode: { type: string, description: Echoed as submitted. }
+        status:
+          type: string
+          enum: [Ready, InProgress, OnHold, Finished]
+          description: Always "Ready" on create. Sent as a name, never the internal enum integer.
+        plannedStartTime:  { type: string, format: date-time }
+        qtyToManufacture:  { type: number, format: double }
+        machineId:                    { type: integer, nullable: true }
+        hourRate:                     { type: number, format: double, nullable: true }
+        lineSetupTimeMinutes:         { type: integer, nullable: true }
+        workstationCapabilityPerHour: { type: number, format: double, nullable: true }
+
+    ProblemDetails:
+      type: object
+      description: RFC 9457. Carries no stack trace, database message, or internal record number.
+      properties:
+        type:   { type: string }
+        title:  { type: string }
+        status: { type: integer }
+
+    ValidationProblemDetails:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items: { type: string }
+              description: Offending field name to messages.
+
+  responses:
+    ValidationProblem:
+      description: Request shape is wrong — missing field, over-length, non-positive quantity, unparsable body, or an unresolvable product code.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ValidationProblemDetails' }
+    Unauthorized:
+      description: >
+        No token, expired, unverifiable, or the account was deactivated since issue.
+        Never a redirect to the browser login page. WWW-Authenticate distinguishes expired
+        from malformed so an integration can renew automatically.
+      headers:
+        WWW-Authenticate:
+          schema: { type: string }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    Forbidden:
+      description: Valid token, insufficient role. Distinct from 401 by design.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    NotFound:
+      description: The addressed resource does not exist.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    Conflict:
+      description: A well-formed request the world disagrees with — code or number already in use.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }

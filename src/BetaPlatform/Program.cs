@@ -4,10 +4,16 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc.Authorization;
+using System.Text;
+using System.Text.Json;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using BetaPlatform.Data;
 using BetaPlatform.Data.Entities;
 using BetaPlatform.Services;
+using BetaPlatform.Services.Api;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +40,45 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 {
     options.ValidationInterval = TimeSpan.FromMinutes(1);
+});
+
+// ---- Bearer tokens for the integration API (005 research R1/R4) ----
+// Registered as an ADDITIONAL, NON-DEFAULT scheme. AddIdentity above has already set the default
+// authenticate/challenge schemes to cookies; calling AddAuthentication(JwtBearerDefaults...) here
+// would re-point them and break every browser screen. Each API controller names this scheme
+// explicitly, which is what makes an unauthenticated API call answer a bare 401 instead of a 302
+// to /Auth/Login.
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+
+var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
+var jwtConfigurationError = jwtOptions.Validate(builder.Environment.IsProduction());
+if (jwtConfigurationError is not null)
+{
+    // Fail loudly at startup rather than puzzlingly at first sign-in. Whoever holds this key mints
+    // tokens for any account and any role, so an unusable or placeholder key is not a warning.
+    throw new InvalidOperationException(jwtConfigurationError);
+}
+
+builder.Services.AddAuthentication().AddJwtBearer(options =>
+{
+    // What is issued is exactly what arrives back: short claim names, no inbound remapping.
+    options.MapInboundClaims = false;
+    options.Events = JwtBearerEventHandlers.Create();
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidIssuer = jwtOptions.Issuer,
+        ValidateAudience = true,
+        ValidAudience = jwtOptions.Audience,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SigningKey)),
+        ValidateLifetime = true,
+        // Default skew is five minutes, which would silently make an 8-hour token 8h05m and
+        // FR-002 untestable to the minute.
+        ClockSkew = TimeSpan.Zero,
+        NameClaimType = ApiClaimTypes.Name,
+        RoleClaimType = ApiClaimTypes.Role
+    };
 });
 
 builder.Services.ConfigureApplicationCookie(options =>
@@ -63,10 +108,32 @@ builder.Services.AddScoped<IWorkOrderService, WorkOrderService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IUserAdminService, UserAdminService>();
 
+// ---- Integration API services (005) ----
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+// Contract-first slice: these return representative data and persist nothing. The behaviour
+// slice swaps them for implementations delegating to IProductService/IWorkOrderService, and
+// changes nothing else (research R7).
+builder.Services.AddScoped<IProductApiService, SampleProductApiService>();
+builder.Services.AddScoped<IWorkOrderApiService, SampleWorkOrderApiService>();
+
 // ---- MVC with a global authorization requirement (FR-001) ----
-builder.Services.AddControllersWithViews()
+builder.Services.AddControllersWithViews(options =>
+    {
+        // Name validation errors by the JSON field the caller actually sent ("productCode"), not by
+        // the CLR property ("ProductCode"). Without this the errors dictionary disagrees with the
+        // request body it is complaining about, and a client keying off the field name breaks.
+        options.ModelMetadataDetailsProviders.Add(
+            new SystemTextJsonValidationMetadataProvider(JsonNamingPolicy.CamelCase));
+    })
     .AddViewLocalization()
     .AddDataAnnotationsLocalization();
+
+// One error shape for the API surface, and no diagnostics in it (FR-030/FR-031, research R5).
+builder.Services.AddProblemDetails();
+
+// Machine-readable contract at /openapi/v1.json (FR-032, research R6).
+builder.Services.AddOpenApi(options =>
+    options.AddDocumentTransformer<OpenApiDocumentTransformer>());
 
 builder.Services.AddAuthorization(options =>
 {
@@ -89,6 +156,12 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 
 var app = builder.Build();
 
+// An unhandled fault under /api answers with a bare ProblemDetails, never the MVC error view and
+// never a stack trace (FR-031). Branched so the browser screens keep the behaviour they have today.
+app.UseWhen(
+    context => context.Request.Path.StartsWithSegments("/api"),
+    apiBranch => apiBranch.UseExceptionHandler());
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -104,6 +177,21 @@ app.UseRequestLocalization(app.Services.GetRequiredService<
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// The published contract (FR-032). Anonymous by design: the global fallback policy would
+// otherwise require a sign-in to read a document that carries only endpoint shapes, no data.
+app.MapOpenApi().AllowAnonymous();
+
+// Interactive API reference over that same document. Anonymous for the same reason: the page only
+// renders the contract and can call nothing without a token the reader has signed in for. It adds
+// no second source of truth — change an action and both the document and this page follow.
+app.MapScalarApiReference("/docs", options =>
+{
+    options
+        .WithTitle("Beta Platform Integration API")
+        .WithOpenApiRoutePattern("/openapi/{documentName}.json")
+        .AddPreferredSecuritySchemes("bearerAuth");
+}).AllowAnonymous();
 
 app.MapControllerRoute(
     name: "default",

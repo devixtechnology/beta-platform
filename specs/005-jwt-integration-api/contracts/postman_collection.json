@@ -1,0 +1,455 @@
+{
+  "info": {
+    "name": "Beta Platform — Integration API (v1)",
+    "_postman_id": "b3ta0005-1nt3-4a91-9v01-c0llect10n05",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Integration API for the Beta Platform: sign in for a bearer token, renew it with a refresh token, read and add products, and raise a work order.\n\n## Start here\n1. Set `baseUrl` (default `http://localhost:5045`, the app's default launch profile).\n2. Set `adminEmail` / `adminPassword`.\n3. Run **1 · Auth → Sign in**. It stores `{{accessToken}}` and `{{refreshToken}}`; every other request picks the access token up automatically.\n4. When the access token expires, run **Renew tokens** instead of signing in again.\n\nAccess tokens last **8 hours**; refresh tokens last **30 days** and are **rotated** on every renewal — the response always carries a new one, and the old one should be discarded.\n\n## One request per endpoint\nThis collection contains only the six operations, each on its happy path. The failure cases — wrong password, missing token, wrong role, malformed body, unknown code — are specified in `contracts/` and exercised deliberately in `quickstart.md`; they are not requests you want to run by accident with **Run collection**.\n\n## Products are addressed by CODE\nNo internal record number appears anywhere in this API, in either direction. A work order names its input and output products by the code the plant prints and files by.\n\n## ⚠️ Contract-first slice\nAuthentication, permissions and request validation are **fully implemented**. The product and work-order operations return **representative data and persist nothing** — so creating the same product code twice answers 201 twice, because there is no stored catalogue to conflict with. The 409 for a duplicate is specified in the contract and starts being produced when the behaviour slice lands, with no change to any URL, body, header or status code.\n\nLive document: `{{baseUrl}}/openapi/v1.json` · Interactive reference: `{{baseUrl}}/docs`"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5045",
+      "type": "string",
+      "description": "Default launch profile. Use https://localhost:7017 for the https profile, or http://localhost:5000 with --no-launch-profile."
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@beta.local",
+      "type": "string"
+    },
+    {
+      "key": "adminPassword",
+      "value": "Admin@123",
+      "type": "string",
+      "description": "The development seed password. Replace for any real environment."
+    },
+    {
+      "key": "sampleProductCode",
+      "value": "RM-STEEL-01",
+      "type": "string",
+      "description": "A code from the representative catalogue. Codes are trimmed and matched case-insensitively, so rm-steel-01 reaches the same product."
+    },
+    {
+      "key": "sampleOutputCode",
+      "value": "FG-PANEL-07",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string",
+      "description": "Set automatically by Sign in and by Renew tokens. 8-hour life."
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string",
+      "description": "Set automatically by Sign in and rotated by Renew tokens. 30-day life. As secret as the password it stands in for."
+    },
+    {
+      "key": "workOrderNumber",
+      "value": "",
+      "type": "string",
+      "description": "Generated per request by a pre-request script."
+    }
+  ],
+  "item": [
+    {
+      "name": "0 · Contract",
+      "description": "The published document itself — not part of the API surface, but the first thing an integrator reads.",
+      "item": [
+        {
+          "name": "OpenAPI document",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/openapi/v1.json",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "openapi",
+                "v1.json"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "The machine-readable contract (FR-032). You can import this URL into Postman directly if you would rather generate requests than use this collection."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const doc = pm.response.json();",
+                  "pm.test('describes all six operations', () => {",
+                  "  const ops = Object.values(doc.paths).reduce((n, p) => n + Object.keys(p).length, 0);",
+                  "  pm.expect(ops).to.eql(6);",
+                  "});",
+                  "pm.test('declares the bearer scheme', () =>",
+                  "  pm.expect(doc.components.securitySchemes).to.have.property('bearerAuth'));",
+                  "pm.test('carries the slice note', () =>",
+                  "  pm.expect(doc.info.description).to.include('SLICE NOTE'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1 · Auth",
+      "description": "Fully implemented — a real account, a real password check, a real token.",
+      "item": [
+        {
+          "name": "Sign in  ▶ saves {{accessToken}} + {{refreshToken}}",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Stores both tokens as collection variables. The access token lasts 8 hours; when it expires run **Renew tokens** rather than sending the password again."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', b.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', b.refreshToken);",
+                  "pm.test('returns a bearer token', () => {",
+                  "  pm.expect(b.tokenType).to.eql('Bearer');",
+                  "  pm.expect(b.accessToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('returns a refresh token', () =>",
+                  "  pm.expect(b.refreshToken).to.be.a('string').and.not.empty);",
+                  "pm.test('expires ~8 hours out', () => {",
+                  "  const hours = (new Date(b.expiresAt) - new Date()) / 3600000;",
+                  "  pm.expect(hours).to.be.within(7.9, 8.1);",
+                  "});",
+                  "pm.test('the refresh token outlives it', () =>",
+                  "  pm.expect(new Date(b.refreshTokenExpiresAt)).to.be.above(new Date(b.expiresAt)));",
+                  "pm.test('reports the account roles', () => pm.expect(b.roles).to.include('Admin'));",
+                  "console.log('Tokens stored. Access expires ' + b.expiresAt + ', refresh ' + b.refreshTokenExpiresAt);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Renew tokens  ▶ rotates {{refreshToken}}",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Exchanges the refresh token for a fresh pair — no password, and no access token required (the caller's may well have expired, which is the point).\n\nRenewal **rotates**: the response carries a new refresh token and this request stores it over the old one. Roles and the account's active state are re-read from the platform, so a deactivated account or a changed password stops renewals immediately rather than at the 30-day expiry."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "const presented = JSON.parse(pm.request.body.raw).refreshToken;",
+                  "pm.collectionVariables.set('accessToken', b.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', b.refreshToken);",
+                  "pm.test('returns a new access token', () => {",
+                  "  pm.expect(b.tokenType).to.eql('Bearer');",
+                  "  pm.expect(b.accessToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('rotates the refresh token', () =>",
+                  "  pm.expect(b.refreshToken).to.not.eql(presented));",
+                  "pm.test('the new access token is good for another ~8 hours', () => {",
+                  "  const hours = (new Date(b.expiresAt) - new Date()) / 3600000;",
+                  "  pm.expect(hours).to.be.within(7.9, 8.1);",
+                  "});",
+                  "pm.test('answers in the same shape sign-in does', () => {",
+                  "  ['accessToken','tokenType','expiresAt','refreshToken','refreshTokenExpiresAt','email','fullName','roles']",
+                  "    .forEach(k => pm.expect(b).to.have.property(k));",
+                  "});",
+                  "console.log('Renewed. Access expires ' + b.expiresAt + ', refresh ' + b.refreshTokenExpiresAt);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 · Products",
+      "description": "Shapes final; the data behind them is representative in this slice.",
+      "item": [
+        {
+          "name": "List products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "activeOnly",
+                  "value": "true",
+                  "disabled": true,
+                  "description": "Enable to exclude deactivated products. Part of the agreed contract even while it filters representative data."
+                }
+              ]
+            },
+            "description": "Any authenticated caller. An empty catalogue is `[]`, never a 404. Enable the `activeOnly` query parameter to filter."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns an array', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "pm.test('no product id anywhere (FR-022)', () =>",
+                  "  pm.expect(pm.response.text().toLowerCase()).to.not.include('productid'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get product by code",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/{{sampleProductCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                "{{sampleProductCode}}"
+              ]
+            },
+            "description": "Addressed by product code. Codes are trimmed and matched case-insensitively, so `rm-steel-01` and `  RM-Steel-01  ` reach the same product."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test('carries the full product shape', () => {",
+                  "  ['productCode','productName','productNameEnglish','category','unit','isActive']",
+                  "    .forEach(k => pm.expect(p).to.have.property(k));",
+                  "});",
+                  "pm.test('no product id anywhere (FR-022)', () =>",
+                  "  pm.expect(pm.response.text().toLowerCase()).to.not.include('productid'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create product (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productCode\": \"RM-NEW-{{$randomInt}}\",\n  \"productName\": \"منتج جديد\",\n  \"productNameEnglish\": \"New Product\",\n  \"category\": \"Raw Material\",\n  \"unit\": \"kg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Admin only. Validated and permission-checked for real; NOT persisted in this slice. Note there is no isActive field to send — a created product is always active (FR-017)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.test('Location addresses it by CODE, not an id', () =>",
+                  "  pm.expect(pm.response.headers.get('Location')).to.include('/api/v1/products/'));",
+                  "pm.test('created active', () => pm.expect(pm.response.json().isActive).to.be.true);",
+                  "pm.test('no product id anywhere (FR-022)', () =>",
+                  "  pm.expect(pm.response.text().toLowerCase()).to.not.include('productid'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 · Work orders",
+      "description": "The feature's end goal: an order whose input and output are named by product code.",
+      "item": [
+        {
+          "name": "Create work order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/work-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "work-orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workOrderNumber\": \"{{workOrderNumber}}\",\n  \"inputProductCode\": \"{{sampleProductCode}}\",\n  \"outputProductCode\": \"{{sampleOutputCode}}\",\n  \"plannedStartTime\": \"2026-09-01T06:00:00\",\n  \"qtyToManufacture\": 1200.5,\n  \"machineId\": 3,\n  \"hourRate\": 45.0,\n  \"lineSetupTimeMinutes\": 30,\n  \"workstationCapabilityPerHour\": 150.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Admin or Client. Input and output named by product code; machineId is the one internal identifier that remains one — machines have no external code on this surface."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('workOrderNumber', 'WO-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "const w = pm.response.json();",
+                  "pm.test('echoes both codes exactly as submitted', () => {",
+                  "  pm.expect(w.inputProductCode).to.eql(pm.collectionVariables.get('sampleProductCode'));",
+                  "  pm.expect(w.outputProductCode).to.eql(pm.collectionVariables.get('sampleOutputCode'));",
+                  "});",
+                  "pm.test('status is the NAME Ready, not an enum integer', () =>",
+                  "  pm.expect(w.status).to.eql('Ready'));",
+                  "pm.test('no product id anywhere (FR-022)', () =>",
+                  "  pm.expect(pm.response.text().toLowerCase()).to.not.include('productid'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

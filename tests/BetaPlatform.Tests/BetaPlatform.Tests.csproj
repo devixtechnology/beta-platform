@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
@@ -21,6 +21,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\BetaPlatform\BetaPlatform.csproj" />
+  </ItemGroup>
+
+  <!-- Lets the tests reference ASP.NET Core MVC types so the API controllers' outcome-to-status
+       mapping can be asserted directly (005 research R11). Shared framework, not a new package. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
 </Project>
