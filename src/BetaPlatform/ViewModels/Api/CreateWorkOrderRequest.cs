@@ -17,13 +17,22 @@ public class CreateWorkOrderRequest
     [MaxLength(50)]
     public string WorkOrderNumber { get; set; } = string.Empty;
 
-    /// <summary>Product <em>code</em> of the material consumed — never a record number.</summary>
+    /// <summary>
+    /// Product <em>codes</em> of the materials consumed — never record numbers. A list, because a
+    /// real order draws on several materials at once; at least one entry is required, none may be
+    /// blank, and no code may appear twice (amended 2026-09-01, FR-042).
+    /// </summary>
+    /// <remarks>
+    /// The output side deliberately stays singular: an order produces one end product, and pluralising
+    /// it would invent a shape the plant does not work in.
+    /// </remarks>
     [Required]
-    public string InputProductCode { get; set; } = string.Empty;
+    [ProductCodeList]
+    public List<string> InputProductCodes { get; set; } = [];
 
     /// <summary>
-    /// Product <em>code</em> of what is produced. May be the same as the input: a rework or
-    /// re-packing order legitimately consumes and produces the same product.
+    /// Product <em>code</em> of what is produced — exactly one. May repeat a code from the inputs:
+    /// a rework or re-packing order legitimately consumes and produces the same product.
     /// </summary>
     [Required]
     public string OutputProductCode { get; set; } = string.Empty;

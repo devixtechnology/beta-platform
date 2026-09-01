@@ -109,7 +109,7 @@ public class ApiValidationTests
     private static CreateWorkOrderRequest ValidWorkOrder() => new()
     {
         WorkOrderNumber = "WO-2026-0142",
-        InputProductCode = "RM-STEEL-01",
+        InputProductCodes = ["RM-STEEL-01", "RM-PAINT-02"],
         OutputProductCode = "FG-PANEL-07",
         PlannedStartTime = new DateTime(2026, 8, 29, 6, 0, 0),
         QtyToManufacture = 1200.5m
@@ -122,14 +122,58 @@ public class ApiValidationTests
     }
 
     [Fact]
-    public void Work_Order_Requires_Number_Both_Codes_And_Planned_Start()
+    public void Work_Order_Accepts_A_Single_Input_Code()
+    {
+        // The list is the shape; one entry is an ordinary order, not a special case.
+        var request = ValidWorkOrder();
+        request.InputProductCodes = ["RM-STEEL-01"];
+
+        Assert.Empty(Validate(request));
+    }
+
+    [Fact]
+    public void Work_Order_Requires_Number_Inputs_Output_And_Planned_Start()
     {
         var invalid = Validate(new CreateWorkOrderRequest());
 
         Assert.Contains(nameof(CreateWorkOrderRequest.WorkOrderNumber), invalid);
-        Assert.Contains(nameof(CreateWorkOrderRequest.InputProductCode), invalid);
+        Assert.Contains(nameof(CreateWorkOrderRequest.InputProductCodes), invalid);
         Assert.Contains(nameof(CreateWorkOrderRequest.OutputProductCode), invalid);
         Assert.Contains(nameof(CreateWorkOrderRequest.PlannedStartTime), invalid);
+    }
+
+    [Fact]
+    public void Work_Order_Rejects_An_Empty_Input_List()
+    {
+        // An order consuming nothing is the same class of mistake as one manufacturing nothing, so
+        // an empty list is refused rather than read as "no inputs" (FR-042).
+        var request = ValidWorkOrder();
+        request.InputProductCodes = [];
+
+        Assert.Contains(nameof(CreateWorkOrderRequest.InputProductCodes), Validate(request));
+    }
+
+    [Fact]
+    public void Work_Order_Rejects_A_Blank_Input_Code()
+    {
+        var request = ValidWorkOrder();
+        request.InputProductCodes = ["RM-STEEL-01", "   "];
+
+        Assert.Contains(nameof(CreateWorkOrderRequest.InputProductCodes), Validate(request));
+    }
+
+    [Theory]
+    [InlineData("rm-steel-01")]
+    [InlineData(" RM-STEEL-01 ")]
+    public void Work_Order_Rejects_A_Repeated_Input_Code(string repeat)
+    {
+        // Case and padding are not part of a code's identity (research R9), so these are repeats.
+        // A repeat carries no information — the contract attaches no quantity to an input — so it
+        // can only be a mistake (FR-042).
+        var request = ValidWorkOrder();
+        request.InputProductCodes = ["RM-STEEL-01", repeat];
+
+        Assert.Contains(nameof(CreateWorkOrderRequest.InputProductCodes), Validate(request));
     }
 
     [Theory]
@@ -147,12 +191,13 @@ public class ApiValidationTests
     }
 
     [Fact]
-    public void Work_Order_Accepts_The_Same_Code_As_Input_And_Output()
+    public void Work_Order_Accepts_An_Output_That_Repeats_An_Input()
     {
         // A rework or re-packing order legitimately consumes and produces the same product, so this
-        // must NOT be refused as a likely typo (US4 §4).
+        // must NOT be refused as a likely typo (US4 §4). The no-repeats rule governs the input list
+        // only; input and output are two different fields.
         var request = ValidWorkOrder();
-        request.InputProductCode = "RM-STEEL-01";
+        request.InputProductCodes = ["RM-STEEL-01", "RM-PAINT-02"];
         request.OutputProductCode = "RM-STEEL-01";
 
         Assert.Empty(Validate(request));
@@ -161,10 +206,11 @@ public class ApiValidationTests
     [Fact]
     public void Work_Order_Rejects_Only_The_Quantity_When_Only_The_Quantity_Is_Wrong()
     {
-        // The exact quickstart check 6 case: same code both sides, quantity zero. The caller must be
-        // told about the quantity and nothing else, or it will "fix" the codes that were fine.
+        // The exact quickstart check 7 case: the output repeating an input, quantity zero. The
+        // caller must be told about the quantity and nothing else, or it will "fix" the codes that
+        // were fine.
         var request = ValidWorkOrder();
-        request.InputProductCode = "RM-STEEL-01";
+        request.InputProductCodes = ["RM-STEEL-01"];
         request.OutputProductCode = "RM-STEEL-01";
         request.QtyToManufacture = 0m;
 

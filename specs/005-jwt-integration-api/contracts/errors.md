@@ -93,13 +93,14 @@ This is the single most likely thing to break in this feature, and `quickstart.m
 `GET /products/{code}` for an unknown code is `404` — the *addressed resource* does not exist.
 `POST /work-orders` naming an unknown input code is `400` — the work-order resource was never
 addressed; a *field in the request body* is wrong. Answering `404` there would tell a caller the
-endpoint is missing. The `errors` dictionary names which of the two codes failed (FR-023):
+endpoint is missing. The `errors` dictionary names the offending field, and for an input the
+**position in the submitted list** — a caller sending six codes must know which one to fix (FR-023):
 
 ```json
 {
   "title": "One or more validation errors occurred.",
   "status": 400,
-  "errors": { "inputProductCode": ["No product exists with code 'RM-999'."] }
+  "errors": { "inputProductCodes[1]": ["No product exists with code 'RM-999'."] }
 }
 ```
 

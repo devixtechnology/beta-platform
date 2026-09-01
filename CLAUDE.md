@@ -7,7 +7,7 @@ persist nothing.
 Read the current plan and its design artifacts for full context:
 - Plan: `specs/005-jwt-integration-api/plan.md`
 - Spec (incl. the slice-boundary table): `specs/005-jwt-integration-api/spec.md`
-- Research & decisions R1-R12: `specs/005-jwt-integration-api/research.md`
+- Research & decisions R1-R13: `specs/005-jwt-integration-api/research.md`
 - Data model (no schema change): `specs/005-jwt-integration-api/data-model.md`
 - Contracts: `specs/005-jwt-integration-api/contracts/` (openapi.yaml, auth, products,
   work-orders, errors, postman_collection.json — one request per operation, happy path only)
@@ -19,7 +19,11 @@ or `work_orders`. Six endpoints under `api/v1/*`: `POST /auth/login`, `POST /aut
 `GET /products`, `GET /products/{productCode}`, `POST /products` (Admin only),
 `POST /work-orders` (Admin or Client).
 Products are addressed by **product code** everywhere — internal `product_id` never appears in the
-contract, in either direction, and a work order names its input and output products by code.
+contract, in either direction, and a work order names its input and output products by code: since
+the 2026-09-01 amendment `inputProductCodes` is a **list** (≥ 1 entry, no blank, no repeats) and
+`outputProductCode` stays single (FR-042 … FR-044, research R13). That list is a contract shape only
+— `work_orders` stores one input product, so the follow-up behaviour slice carries a
+`work_order_input_products` join table; **005 itself still adds no migration**.
 Key constraints: (a) `AddIdentity` already owns the default auth scheme, so JWT bearer is registered
 as an **additional, non-default** scheme and named explicitly on each API controller — this is what
 makes an unauthenticated API call return a bare `401` instead of redirecting to `/Auth/Login`;

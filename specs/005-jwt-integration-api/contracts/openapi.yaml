@@ -174,9 +174,10 @@ paths:
       summary: Create a work order, naming products by code
       description: >
         Admin or Client. Request validation is enforced; the order is NOT persisted in this slice.
-        Unresolvable product codes (400, naming which code) and a duplicate work-order number (409)
-        are specified but not yet produced. The same code may be both input and output — a rework
-        order legitimately consumes and produces the same product.
+        Inputs are a LIST of product codes (at least one, none blank, no repeats); the output is a
+        SINGLE code. An unresolvable code (400, naming inputProductCodes[i] or outputProductCode)
+        and a duplicate work-order number (409) are specified but not yet produced. The output code
+        may repeat an input — a rework order legitimately consumes and produces the same product.
       requestBody:
         required: true
         content:
@@ -276,10 +277,18 @@ components:
 
     CreateWorkOrderRequest:
       type: object
-      required: [workOrderNumber, inputProductCode, outputProductCode, plannedStartTime, qtyToManufacture]
+      required: [workOrderNumber, inputProductCodes, outputProductCode, plannedStartTime, qtyToManufacture]
       properties:
         workOrderNumber:   { type: string, minLength: 1, maxLength: 50 }
-        inputProductCode:  { type: string, minLength: 1, description: Product CODE, not a record number. }
+        inputProductCodes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, minLength: 1 }
+          description: >
+            Product CODES, not record numbers. An order consumes several materials, so this is a
+            list: at least one entry, none blank, and no code twice (compared trimmed and
+            case-insensitively, so "rm-01" repeats "RM-01"). The output stays a single code.
         outputProductCode: { type: string, minLength: 1, description: Product CODE, not a record number. }
         plannedStartTime:  { type: string, format: date-time }
         qtyToManufacture:
@@ -299,10 +308,13 @@ components:
 
     WorkOrder:
       type: object
-      required: [workOrderNumber, inputProductCode, outputProductCode, status, plannedStartTime, qtyToManufacture]
+      required: [workOrderNumber, inputProductCodes, outputProductCode, status, plannedStartTime, qtyToManufacture]
       properties:
         workOrderNumber:   { type: string }
-        inputProductCode:  { type: string, description: Echoed as submitted. }
+        inputProductCodes:
+          type: array
+          items: { type: string }
+          description: Every input code, echoed as submitted and in the order sent.
         outputProductCode: { type: string, description: Echoed as submitted. }
         status:
           type: string

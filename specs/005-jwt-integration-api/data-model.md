@@ -32,6 +32,12 @@ slice performs.
 renewal arrives without a migration (research R12). The trade-off — no per-token revocation list — is
 stated in the spec's Assumptions and in `contracts/auth.md`, not hidden here.
 
+**One shape runs ahead of the schema, deliberately.** Since the 2026-09-01 amendment a work order
+names **several** input product codes, while `work_orders` holds a single `input_product_id`. This
+slice writes nothing, so the contract costs no migration here (research R13); the behaviour slice
+carries the join table that makes a list storable. It is recorded in this document rather than left
+for that slice to discover.
+
 ---
 
 ## Contract shapes
@@ -126,7 +132,7 @@ caller gets a `400` naming the field, rather than a database truncation error la
 | Field | Required | Rules | Maps to |
 |---|---|---|---|
 | `workOrderNumber` | ✅ | non-blank; ≤ 50 | `work_orders.work_order_number` |
-| `inputProductCode` | ✅ | non-blank | resolved → `input_product_id` |
+| `inputProductCodes` | ✅ | array; ≥ 1 entry; no blank entry; no code twice | each resolved → a work-order input product (join table, behaviour slice) |
 | `outputProductCode` | ✅ | non-blank | resolved → `output_product_id` |
 | `plannedStartTime` | ✅ | valid date-time | `planned_start_time` |
 | `qtyToManufacture` | ✅ | **> 0** | `qty_to_manufacture` |
@@ -135,9 +141,14 @@ caller gets a `400` naming the field, rather than a database truncation error la
 | `lineSetupTimeMinutes` | ❌ | ≥ 0 when present | `line_setup_time_minutes` |
 | `workstationCapabilityPerHour` | ❌ | ≥ 0 when present | `workstation_capability_per_hour` |
 
-The two product codes are the point of the feature: the caller sends codes, the platform resolves
-them to `input_product_id` / `output_product_id`, and those ids never appear in the contract in
-either direction (FR-022).
+The product codes are the point of the feature: the caller sends codes, the platform resolves them
+to product ids, and those ids never appear in the contract in either direction (FR-022).
+
+The input side is a **list** and the output side a single code (amended 2026-09-01, FR-042): an order
+consumes several materials and produces one end product, and that asymmetry is the plant's, not the
+API's. No quantity is attached to an input — `qtyToManufacture` is the order's output quantity and
+stays the only quantity in the contract (FR-043). A repeated input code is refused rather than
+collapsed: with no quantity to add up, naming a material twice can only be a mistake.
 
 `machineId` is the one identifier that **is** an internal number, and it stays one: FR-022 constrains
 *products*, machines have no equivalent external code on this surface, and inventing one would be
@@ -151,7 +162,7 @@ worth catching at the edge (US4 §3).
 | Field | Type | Maps to |
 |---|---|---|
 | `workOrderNumber` | string | `work_order_number` |
-| `inputProductCode` | string | resolved from `input_product_id` — **echoed as submitted** (FR-027) |
+| `inputProductCodes` | string[] | every input code — **echoed as submitted, in the order sent** (FR-027) |
 | `outputProductCode` | string | resolved from `output_product_id` |
 | `status` | string | `status` — always `"Ready"` on create (FR-026) |
 | `plannedStartTime` | date-time | `planned_start_time` |
@@ -172,6 +183,7 @@ change; the name is the contract.
 | Rule | Enforced by | Live this slice? |
 |---|---|---|
 | Required fields, max lengths, `qty > 0`, email format | data annotations on the DTO → `[ApiController]` → `400 ValidationProblemDetails` | ✅ yes |
+| Input list carries ≥ 1 entry, no blank entry, and no code twice | `ProductCodeListAttribute` on the DTO → same `400` | ✅ yes |
 | Unparsable JSON body | model binding → `400` in the same shape | ✅ yes |
 | Unknown extra fields ignored, not refused | default `System.Text.Json` behaviour — left as-is | ✅ yes |
 | Caller authenticated | JWT bearer scheme → `401` | ✅ yes |
@@ -182,7 +194,7 @@ change; the name is the contract.
 | Product code exists | `IProductApiService` | ❌ deferred — response specified, not yet produced |
 | Product code unique | `IProductApiService` | ❌ deferred |
 | Work-order number unique | `IWorkOrderApiService` | ❌ deferred |
-| Input/output codes resolvable | `IWorkOrderApiService` | ❌ deferred |
+| Every input code and the output code resolvable | `IWorkOrderApiService` — an input names its position, `inputProductCodes[i]` | ❌ deferred |
 
 The split is the slice boundary in one table: everything that is a property of the **request** is
 enforced now; everything that is a property of the **data** is specified now and enforced later.

@@ -5,10 +5,11 @@ public class WorkOrderResponse
 {
     public string WorkOrderNumber { get; set; } = string.Empty;
 
-    /// <summary>Echoed exactly as submitted, so a caller confirms what was resolved without a
-    /// second call (FR-027).</summary>
-    public string InputProductCode { get; set; } = string.Empty;
+    /// <summary>Every input code echoed exactly as submitted and in the submitted order, so a caller
+    /// confirms what was resolved without a second call (FR-027).</summary>
+    public List<string> InputProductCodes { get; set; } = [];
 
+    /// <summary>The single output code, echoed as submitted.</summary>
     public string OutputProductCode { get; set; } = string.Empty;
 
     /// <summary>

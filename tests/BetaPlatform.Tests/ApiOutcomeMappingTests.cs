@@ -105,8 +105,9 @@ public class ApiOutcomeMappingTests
     [Fact]
     public async Task Invalid_Maps_To_400_And_Names_The_Offending_Field()
     {
-        // FR-023: when a request carries two product codes, the caller must be told which failed.
-        var result = ApiResult<ProductResponse>.Invalid("inputProductCode", "No product exists with code 'RM-999'.");
+        // FR-023: when a request carries a list of input codes and one output code, the caller must
+        // be told which entry failed — so an input names its position, not just its field.
+        var result = ApiResult<ProductResponse>.Invalid("inputProductCodes[1]", "No product exists with code 'RM-999'.");
 
         var response = await NewController(result).GetByCode("RM-999");
 
@@ -114,8 +115,8 @@ public class ApiOutcomeMappingTests
         Assert.Equal(StatusCodes.Status400BadRequest, problem.StatusCode);
 
         var validation = Assert.IsType<ValidationProblemDetails>(problem.Value);
-        Assert.True(validation.Errors.ContainsKey("inputProductCode"));
-        Assert.Contains("RM-999", validation.Errors["inputProductCode"][0]);
+        Assert.True(validation.Errors.ContainsKey("inputProductCodes[1]"));
+        Assert.Contains("RM-999", validation.Errors["inputProductCodes[1]"][0]);
     }
 
     [Fact]

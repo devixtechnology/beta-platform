@@ -16,10 +16,11 @@ public interface IWorkOrderApiService
     /// Creates a work order in the initial <c>Ready</c> state.
     /// </summary>
     /// <remarks>
-    /// Answers <see cref="ApiOutcome.Invalid"/> — naming <c>inputProductCode</c> or
-    /// <c>outputProductCode</c> — when a code resolves to no product, and
-    /// <see cref="ApiOutcome.Conflict"/> when the order number is already in use. Naming the field
-    /// matters: a request carrying two codes must tell the caller which one to fix (FR-023).
+    /// Answers <see cref="ApiOutcome.Invalid"/> — naming the offending field as
+    /// <c>inputProductCodes[i]</c>, at the position submitted, or as <c>outputProductCode</c> —
+    /// when a code resolves to no product, and <see cref="ApiOutcome.Conflict"/> when the order
+    /// number is already in use. Naming the field matters, and the index with it: a request
+    /// carrying a list of input codes must tell the caller <em>which entry</em> to fix (FR-023).
     /// </remarks>
     Task<ApiResult<WorkOrderResponse>> CreateAsync(CreateWorkOrderRequest request);
 }

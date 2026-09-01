@@ -140,6 +140,10 @@ back in the read shape.
 **Goal**: A work order is created naming its input and output products **by code**, never by record
 number.
 
+> **Amended 2026-09-01**: the input side became a **list** of codes. T034 … T039 below record the
+> single-input shape as it was built; Phase 9 carries the amendment. Where the two differ, Phase 9
+> is the current contract.
+
 **Independent Test**: With an admin or client token, submit a valid work order and get `201` echoing
 both codes and `status: "Ready"` as a string; submit `qtyToManufacture: 0` with the same code on
 both sides and get `400` naming **only** `qtyToManufacture`.
@@ -196,6 +200,32 @@ renewal is refused.
 
 **Checkpoint**: A caller can stay authenticated for 30 days without the account's password in its
 configuration, and loses that access one request after being deactivated.
+
+---
+
+## Phase 9: Several inputs, one output (US4, added 2026-09-01)
+
+**Goal**: A work order names **several** input product codes and one output code, at the author's
+request (FR-042 … FR-044, research R13). Supersedes the single-input shape in T034 … T039; no other
+phase moves.
+
+**Independent Test**: Submit an order naming two inputs and one output and confirm the response
+echoes every code in the order sent; submit an empty input list, a list with a blank entry, and a
+list naming the same code twice, and confirm each is a `400` naming `inputProductCodes`.
+
+> Touches `CreateWorkOrderRequest.cs`, `WorkOrderResponse.cs` and `SampleWorkOrderApiService.cs`, so
+> these are **not** parallel with each other where they share a file.
+
+- [X] T060 [P] [US4] Create `ProductCodeListAttribute` in `src/BetaPlatform/ViewModels/Api/ProductCodeListAttribute.cs`: at least one entry, no blank entry, and no code twice under `ProductCode.Normalise` + `OrdinalIgnoreCase` (research R9 — the one place codes are compared). No upper bound on the list: a ceiling invented to satisfy a validator eventually refuses a legitimate order
+- [X] T061 [US4] Replace `InputProductCode` with `InputProductCodes` (`List<string>`, `[Required]`, `[ProductCodeList]`) in `src/BetaPlatform/ViewModels/Api/CreateWorkOrderRequest.cs`; the output stays a single `OutputProductCode`
+- [X] T062 [US4] Replace `InputProductCode` with `InputProductCodes` in `src/BetaPlatform/ViewModels/Api/WorkOrderResponse.cs`, and echo the codes **in the order submitted** in `src/BetaPlatform/Services/Api/SampleWorkOrderApiService.cs` (FR-027)
+- [X] T063 [US4] State the list rules and the indexed error key (`inputProductCodes[i]`) in the XML docs and `[EndpointDescription]` of `src/BetaPlatform/Controllers/Api/WorkOrdersApiController.cs` and on `IWorkOrderApiService.CreateAsync`, so the published document carries them (FR-023, FR-033)
+- [X] T064 [P] [US4] Extend `tests/BetaPlatform.Tests/ApiValidationTests.cs`: a one-entry list passes; an empty list, a blank entry, and a repeat differing only by case or padding are each rejected naming `inputProductCodes`; an output repeating an input is **accepted** (FR-044). Update `tests/BetaPlatform.Tests/ApiOutcomeMappingTests.cs` to assert the indexed key
+- [X] T065 [US4] Update the design artifacts to the amended shape: `spec.md` (US4, FR-020/023/025/027, FR-042 … FR-044, Assumptions), `research.md` R13, `data-model.md`, `plan.md`, `contracts/work-orders.md`, `contracts/openapi.yaml`, `contracts/errors.md`, `contracts/postman_collection.json`, and `quickstart.md` check 7
+- [X] T066 [US4] Run `dotnet test` and quickstart check 7, and confirm `dotnet ef migrations list` still shows **no** migration from this feature — the list is a contract shape here, not a stored one (R13)
+
+**Checkpoint**: The contract states the plant's shape — several materials in, one product out — and
+every rule that is a property of the request is enforced today.
 
 ---
 
@@ -308,5 +338,8 @@ parallel. Both converge on Phase 7.
 - **What the follow-up slice changes**: two DI registration lines in `Program.cs`, plus a real
   `ProductApiService` and `WorkOrderApiService` delegating to the existing `IProductService` /
   `IWorkOrderService`. No route, DTO, or status code moves. If wiring the behaviour later requires
-  editing a controller, this slice was built wrong.
+  editing a controller, this slice was built wrong. **One addition since 2026-09-01**: that slice
+  also carries an EF Core migration for a `work_order_input_products` join table, because a work
+  order now names several input codes and `work_orders` stores one (research R13). It is a migration
+  in the follow-up, not here — this slice still writes nothing.
 - Commit after each task or logical group; stop at any checkpoint to validate a story on its own.

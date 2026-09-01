@@ -20,8 +20,9 @@ public class SampleWorkOrderApiService : IWorkOrderApiService
         {
             WorkOrderNumber = request.WorkOrderNumber,
 
-            // Echoed exactly as submitted (FR-027), normalised only for accidental padding.
-            InputProductCode = ProductCode.Normalise(request.InputProductCode),
+            // Echoed exactly as submitted (FR-027), normalised only for accidental padding. Order is
+            // preserved: the caller listed its materials in an order it recognises.
+            InputProductCodes = request.InputProductCodes.Select(ProductCode.Normalise).ToList(),
             OutputProductCode = ProductCode.Normalise(request.OutputProductCode),
 
             // The name, not the enum's integer — the numbering is an internal detail (FR-026).

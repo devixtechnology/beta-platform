@@ -4,7 +4,8 @@
 
 **Created**: 2026-08-28
 
-**Status**: Draft (amended 2026-08-29 — token renewal added, see FR-036 … FR-041)
+**Status**: Draft (amended 2026-08-29 — token renewal added, see FR-036 … FR-041; amended
+2026-09-01 — a work order names **several** input product codes, see FR-042 … FR-044)
 
 **Input**: User description: "hi i want to make apis for some operations, just apis without logic for now, the first api is for product creation and get one product and get all products and endpint for create work order but note in product for inour and output use the product code and ofcours login and jwtvtoken based endopints"
 
@@ -28,7 +29,8 @@ it is settled in a later slice.
 A caller identifies products by their **product code** — the code the plant already prints, speaks,
 and files by. Internal record numbers are never required from, nor meaningful to, an external
 caller, and this is most visible when raising a work order: its input and output products are named
-by code, not by internal identifier.
+by code, not by internal identifier. An order names **several** input codes and one output code — a
+production task consumes a set of materials and produces one end product.
 
 ### Slice boundary: what is real and what is representative
 
@@ -167,34 +169,43 @@ naming that field; submit with a client-role token and confirm it is refused as 
 
 An authorized caller submits a work order, naming its input and output products **by product code**
 rather than by any internal record number, along with the order number, planned start, quantity, and
-the optional machine, rate, setup-time, and capability figures.
+the optional machine, rate, setup-time, and capability figures. The inputs are a **list** — an order
+consumes several materials — while the output stays a **single** product.
 
 **Why this priority**: It is the feature's end goal and the reason the product endpoints exist, but
 it depends on both a token and an agreed product shape, so it lands last.
 
-**Independent Test**: With an authorized token and two product codes, submit a work order and
-confirm the response echoes both codes and an initial status; submit one omitting the order number
-or carrying a non-positive quantity and confirm each is refused naming the field.
+**Independent Test**: With an authorized token and a few product codes, submit a work order naming
+two inputs and one output and confirm the response echoes every code, in the order sent, with an
+initial status; submit one omitting the order number, carrying an empty input list, or carrying a
+non-positive quantity, and confirm each is refused naming the field.
 
 **Acceptance Scenarios**:
 
-1. **Given** an authorized caller, **When** it submits a well-formed work order naming an input and
-   an output product code, **Then** the response reports it as created and carries the order number,
-   status, planned start, quantity, and **both product codes exactly as submitted**.
-2. **Given** a submission that omits the order number, either product code, or the planned start,
-   **When** it is submitted, **Then** it is rejected as invalid input naming each offending field.
+1. **Given** an authorized caller, **When** it submits a well-formed work order naming one or more
+   input product codes and an output product code, **Then** the response reports it as created and
+   carries the order number, status, planned start, quantity, and **every product code exactly as
+   submitted**, the inputs in the order they were sent.
+2. **Given** a submission that omits the order number, the input list, the output code, or the
+   planned start, **When** it is submitted, **Then** it is rejected as invalid input naming each
+   offending field.
 3. **Given** a quantity of zero or below, **When** it is submitted, **Then** it is rejected as
    invalid input.
-4. **Given** a submission naming the same product code as both input and output, **When** it is
+4. **Given** a submission whose output code repeats one of its input codes, **When** it is
    submitted, **Then** it is accepted — a rework order legitimately consumes and produces the same
    product.
-5. **Given** a created work order, **When** the response is read, **Then** its status is the
+5. **Given** a submission carrying an empty input list, or one whose entries include a blank code or
+   the same code twice, **When** it is submitted, **Then** it is rejected as invalid input naming
+   the input list — an order that consumes nothing, or that names a material twice with no quantity
+   to distinguish the entries, is a client-side mistake rather than an instruction.
+6. **Given** a created work order, **When** the response is read, **Then** its status is the
    platform's initial "ready" state; this feature exposes no way to start, hold, or finish an order.
-6. **Given** an authenticated caller holding neither the administrative nor the client permission,
+7. **Given** an authenticated caller holding neither the administrative nor the client permission,
    **When** it attempts to raise a work order, **Then** the call is refused as forbidden.
-7. **Given** the contract document, **When** an integrator reads it, **Then** the responses for an
-   unresolvable product code and for a duplicate work-order number are fully specified, so the
-   client can handle both before the platform can produce them.
+8. **Given** the contract document, **When** an integrator reads it, **Then** the responses for an
+   unresolvable product code — naming **which entry of the input list** failed, by its position —
+   and for a duplicate work-order number are fully specified, so the client can handle both before
+   the platform can produce them.
 
 ---
 
@@ -224,6 +235,14 @@ or carrying a non-positive quantity and confirm each is refused naming the field
 - **Request carrying unknown extra fields** — accepted and ignored rather than refused, so a caller
   running slightly ahead of the contract is not broken by it.
 - **Empty catalogue** — the list endpoint returns an empty list, not a "not found".
+- **Work order carrying an empty input list** — refused, in the same way and for the same reason as
+  a quantity of zero: an order that consumes nothing is a mistake worth catching at the edge.
+- **Work order naming the same input code twice** — refused. The contract attaches no quantity to an
+  input, so a repeat adds nothing a single entry does not say, and is far likelier to be a client
+  that built its list wrongly than a deliberate instruction.
+- **Work order naming many inputs** — accepted; the list has no fixed ceiling, because a plausible
+  order size is a plant's business and inventing a limit would eventually refuse a legitimate
+  order.
 - **Responses that this slice cannot yet produce** — unknown product code, duplicate product code,
   duplicate work-order number, unresolvable input or output code. Each is fully specified in the
   contract and MUST NOT change shape or response code when the behaviour is wired later.
@@ -283,22 +302,25 @@ or carrying a non-positive quantity and confirm each is refused naming the field
 #### Work orders — contract and validation delivered, data behaviour deferred
 
 - **FR-020**: The platform MUST expose an operation creating a work order from a work-order number,
-  an **input product code**, an **output product code**, a planned start time, and a quantity to
-  manufacture.
+  a **list of input product codes**, a single **output product code**, a planned start time, and a
+  quantity to manufacture.
 - **FR-021**: The work-order create operation MUST accept an optional assigned machine, hourly rate,
   line setup time, and workstation capability.
 - **FR-022**: The platform MUST NOT require, accept, or return internal product record numbers in
   place of product codes anywhere in this feature's contract.
 - **FR-023**: The contract MUST specify the invalid-input response for an input or output product
-  code that resolves to no product, and that response MUST name which of the two failed.
+  code that resolves to no product, and that response MUST name which code failed — for an input,
+  by its **position in the submitted list**, so a caller sending several codes knows which entry to
+  fix without comparing the response against its own payload.
 - **FR-024**: The contract MUST specify a conflict response for a work-order number already in use.
-- **FR-025**: The create operation MUST validate that the order number, both product codes, and the
-  planned start are present, and that the quantity is greater than zero, rejecting violations as
-  invalid input.
+- **FR-025**: The create operation MUST validate that the order number, the input list, the output
+  code, and the planned start are present, and that the quantity is greater than zero, rejecting
+  violations as invalid input.
 - **FR-026**: A created work order MUST be reported in the platform's initial "ready" state; this
   feature exposes no way to start, hold, or finish an order.
-- **FR-027**: The work-order response MUST echo the order including both product codes, so a caller
-  can confirm what it submitted without a second call.
+- **FR-027**: The work-order response MUST echo the order including every product code — the inputs
+  in the order they were submitted — so a caller can confirm what it submitted without a second
+  call.
 - **FR-028**: Creating a work order MUST be permitted to callers holding either the administrative
   or the client permission.
 
@@ -346,6 +368,23 @@ or carrying a non-positive quantity and confirm each is refused naming the field
 - **FR-041**: An access token and a refresh token MUST NOT be interchangeable: presenting a refresh
   token as a bearer credential, or an access token for renewal, MUST be refused.
 
+#### Several inputs, one output — contract and validation delivered, data behaviour deferred
+
+> Added 2026-09-01 at the author's request, amending FR-020, FR-023, FR-025 and FR-027 in place.
+> Numbered after FR-041 so every identifier already referenced in the plan, tasks, contracts, and
+> code keeps its meaning.
+
+- **FR-042**: The work-order create operation MUST accept **one or more** input product codes and
+  exactly **one** output product code. The input list MUST carry at least one entry, MUST NOT
+  contain a blank entry, and MUST NOT name the same code twice under the feature's own matching rule
+  (trimmed, case-insensitive); each violation MUST be rejected as invalid input naming the list.
+- **FR-043**: An input MUST name only *what* is consumed. The contract MUST NOT attach a quantity,
+  sequence, or any other attribute to an input in this feature; the quantity to manufacture remains
+  the order's single quantity.
+- **FR-044**: An output product code that repeats one of the input codes MUST be accepted — the
+  no-repeats rule of FR-042 governs the input list among itself, and a rework or re-packing order
+  legitimately consumes and produces the same product.
+
 ### Key Entities *(include if data involved)*
 
 - **Account**: an existing platform user, identified by email, holding one or more roles and an
@@ -358,10 +397,10 @@ or carrying a non-positive quantity and confirm each is refused naming the field
 - **Product**: a material or finished good, identified externally by its **product code**, carrying
   a primary name, an optional English name, an optional category, a unit of measure, and an active
   flag. Defined here as a contract shape; not yet read from or written to platform data.
-- **Work order**: a production task, identified by its work-order number, referencing an input
-  product and an output product **by code**, with a planned start, a quantity to manufacture, an
-  optional assigned machine, optional rate/setup/capability figures, and a lifecycle status that
-  begins at "ready". Defined here as a contract shape; not yet persisted.
+- **Work order**: a production task, identified by its work-order number, referencing **one or more
+  input products** and a single output product **by code**, with a planned start, a quantity to
+  manufacture, an optional assigned machine, optional rate/setup/capability figures, and a lifecycle
+  status that begins at "ready". Defined here as a contract shape; not yet persisted.
 
 ## Success Criteria *(mandatory)*
 
@@ -420,8 +459,12 @@ or carrying a non-positive quantity and confirm each is refused naming the field
   behaviour wired later cannot surprise a client already built against it.
 - **No pagination in this slice.** The product catalogue is small enough (hundreds, not millions)
   that the list operation returns it whole. Pagination is a later change if volume demands it.
-- **No schema change.** Every field these endpoints exchange already exists on the platform's
-  products, work orders, and user records, so wiring the behaviour later needs no migration.
+- **No schema change in this slice — with one field the platform will have to grow into.** Every
+  field these endpoints exchange already exists on the platform's products, work orders, and user
+  records, with a single exception introduced by the 2026-09-01 amendment: a work order stores one
+  input product, and the contract now names several. This slice persists nothing, so it still adds
+  no migration; the follow-up behaviour slice carries one join table for the additional inputs. The
+  cost is stated here rather than discovered later (research R13).
 - **The bilingual product names are both returned** — primary and English travel in every product
   response, and the caller chooses which to display.
 

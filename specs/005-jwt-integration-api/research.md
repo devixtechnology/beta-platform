@@ -386,9 +386,75 @@ catch it where it is loud.
 
 ---
 
+## R13 — Several input products, one output (FR-042 … FR-044)
+
+> **Added 2026-09-01, at the author's request.** The original contract gave a work order one input
+> code and one output code, mirroring the `work_orders` row. The author asked for the input side to
+> be a list. That is the plant's shape, not a convenience: an order consumes steel *and* paint *and*
+> fixings, and produces one end product.
+
+**Decision**: `inputProductCodes` is an **array of product codes** — at least one entry, no blank
+entry, no code twice — and `outputProductCode` stays a **single** code. No quantity, sequence, or
+other attribute is attached to an input. An unresolvable input names its **position**,
+`inputProductCodes[i]`, in the validation errors.
+
+**Rationale**, point by point:
+
+*The output stays singular.* Pluralising both sides would look symmetrical and be wrong: an order
+produces one end product, and every caller would spend forever unwrapping a one-element array. The
+asymmetry belongs to the domain, so the contract states it rather than smoothing it over.
+
+*No quantity per input.* A `{ productCode, qtyRequired }` object was the obvious alternative and is
+the shape a bill of materials eventually needs. It is declined here because nothing in this feature —
+or in `work_orders` — has anywhere to put a per-input quantity, and a field the platform silently
+ignores is worse than a field that is missing: the first is a lie the contract tells, the second is
+scope a later feature can add without breaking a caller. Adding a member to an array element is a
+compatible change later; removing one is not.
+
+*No code twice.* Because an input carries no quantity, a repeated code says nothing a single entry
+does not. Silently collapsing it would hide a client that built its list wrongly, so it is refused at
+the edge, compared through the same `ProductCode` helper as everything else (R9) — "rm-01" and
+" RM-01 " are repeats.
+
+*An empty list is refused.* `[]` is the same class of mistake as `qtyToManufacture: 0`, which this
+feature already rejects rather than accepting an order to manufacture nothing.
+
+*No ceiling on the list.* The same reasoning as `GreaterThanZeroAttribute`: a limit invented to
+satisfy a validator eventually refuses a legitimate order. The request-size limits ASP.NET Core
+already applies are a real bound; a made-up one is not.
+
+*The error names the index.* FR-023 required naming which of two codes failed. With a list, that
+means the position — a caller sending six codes must not have to diff the response against its own
+payload. `inputProductCodes[1]` is the same key ASP.NET Core model binding produces for an element of
+a bound collection, so the shape is the framework's, not an invention of ours.
+
+**What this costs, stated plainly**: `work_orders` holds a single `input_product_id`, so the contract
+now describes something the schema cannot yet store. It costs *this* slice nothing — 005 persists
+nothing and still adds no migration — but the follow-up behaviour slice must add a
+`work_order_input_products` join table (`work_order_id`, `product_id`, unique together) via an EF
+Core migration, where before it needed none. That is a genuine change to the follow-up's scope and is
+recorded in `spec.md` Assumptions, `data-model.md`, and `tasks.md` rather than left to be discovered.
+
+**Alternatives considered**:
+- *Reuse the existing `work_order_inputs` table* — it is the 003 change request's manually-recorded
+  input **weights**, carrying no product reference at all. Two different concepts that happen to
+  share a word; overloading it would corrupt both.
+- *Keep one input and let a caller raise several orders* — one order per material misrepresents a
+  single production task as many, and every downstream count (orders raised, uptime per order) would
+  be wrong for the sake of avoiding a join table.
+- *Add `inputProductCode2`, `inputProductCode3` … columns* — a fixed ceiling in the schema, chosen
+  arbitrarily, and a contract that grows a new field name every time the plant changes a recipe.
+- *Accept both `inputProductCode` and `inputProductCodes` for compatibility* — nothing consumes this
+  API yet (the slice persists nothing and has no integrator in production), so there is no
+  compatibility to keep; two ways to say the same thing would be permanent, and the ambiguity of
+  sending both would need its own rule.
+
+---
+
 ## Resolved: no open questions
 
 The two decisions the specification deferred were answered by the author before planning began and
 are recorded in `spec.md` (contract-only for the five business operations; 8-hour tokens). The third,
 raised after implementation, is recorded in R12: tokens are renewed by a refresh token as well as by
-signing in again. No `NEEDS CLARIFICATION` remains in the Technical Context.
+signing in again. The fourth, raised on 2026-09-01, is recorded in R13: a work order names several
+input products and one output. No `NEEDS CLARIFICATION` remains in the Technical Context.

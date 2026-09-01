@@ -220,21 +220,36 @@ curl.exe -i -X POST http://localhost:5000/api/v1/products -H "Authorization: Bea
 ```powershell
 curl.exe -i -X POST http://localhost:5000/api/v1/work-orders -H "Authorization: Bearer $token" `
   -H "Content-Type: application/json" `
-  -d '{\"workOrderNumber\":\"WO-TEST-1\",\"inputProductCode\":\"RM-STEEL-01\",\"outputProductCode\":\"FG-PANEL-07\",\"plannedStartTime\":\"2026-08-29T06:00:00\",\"qtyToManufacture\":100}'
+  -d '{\"workOrderNumber\":\"WO-TEST-1\",\"inputProductCodes\":[\"RM-STEEL-01\",\"RM-PAINT-02\"],\"outputProductCode\":\"FG-PANEL-07\",\"plannedStartTime\":\"2026-08-29T06:00:00\",\"qtyToManufacture\":100}'
 ```
 
-**Expect** `201`; both codes echoed exactly as submitted; `status: "Ready"` as a **string**, not `1`;
-no product id fields. FR-026, FR-027.
+**Expect** `201`; every code echoed exactly as submitted, the two inputs **in the order sent**;
+`status: "Ready"` as a **string**, not `1`; no product id fields. FR-026, FR-027, FR-042.
 
 ```powershell
-# quantity must be > 0, and the same code may be both input and output
+# quantity must be > 0, and the output may repeat an input
 curl.exe -i -X POST http://localhost:5000/api/v1/work-orders -H "Authorization: Bearer $token" `
   -H "Content-Type: application/json" `
-  -d '{\"workOrderNumber\":\"WO-TEST-2\",\"inputProductCode\":\"RM-STEEL-01\",\"outputProductCode\":\"RM-STEEL-01\",\"plannedStartTime\":\"2026-08-29T06:00:00\",\"qtyToManufacture\":0}'
+  -d '{\"workOrderNumber\":\"WO-TEST-2\",\"inputProductCodes\":[\"RM-STEEL-01\"],\"outputProductCode\":\"RM-STEEL-01\",\"plannedStartTime\":\"2026-08-29T06:00:00\",\"qtyToManufacture\":0}'
 ```
 
-**Expect** `400` naming `qtyToManufacture` **only** — the repeated code is a legitimate rework order
-and must not be rejected.
+**Expect** `400` naming `qtyToManufacture` **only** — an output repeating an input is a legitimate
+rework order and must not be rejected.
+
+```powershell
+# the input list: empty, and the same code twice
+curl.exe -i -X POST http://localhost:5000/api/v1/work-orders -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" `
+  -d '{\"workOrderNumber\":\"WO-TEST-3\",\"inputProductCodes\":[],\"outputProductCode\":\"FG-PANEL-07\",\"plannedStartTime\":\"2026-08-29T06:00:00\",\"qtyToManufacture\":100}'
+
+curl.exe -i -X POST http://localhost:5000/api/v1/work-orders -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" `
+  -d '{\"workOrderNumber\":\"WO-TEST-4\",\"inputProductCodes\":[\"RM-STEEL-01\",\"rm-steel-01\"],\"outputProductCode\":\"FG-PANEL-07\",\"plannedStartTime\":\"2026-08-29T06:00:00\",\"qtyToManufacture\":100}'
+```
+
+**Expect** `400` from both, naming `inputProductCodes`: an order consuming nothing is the same
+mistake as one manufacturing nothing, and the second list names one material twice — case is not part
+of a code's identity. FR-042.
 
 ### 8. Deactivation revokes a live token — and stops its renewals ⭐
 

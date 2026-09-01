@@ -3,7 +3,7 @@
     "name": "Beta Platform — Integration API (v1)",
     "_postman_id": "b3ta0005-1nt3-4a91-9v01-c0llect10n05",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Integration API for the Beta Platform: sign in for a bearer token, renew it with a refresh token, read and add products, and raise a work order.\n\n## Start here\n1. Set `baseUrl` (default `http://localhost:5045`, the app's default launch profile).\n2. Set `adminEmail` / `adminPassword`.\n3. Run **1 · Auth → Sign in**. It stores `{{accessToken}}` and `{{refreshToken}}`; every other request picks the access token up automatically.\n4. When the access token expires, run **Renew tokens** instead of signing in again.\n\nAccess tokens last **8 hours**; refresh tokens last **30 days** and are **rotated** on every renewal — the response always carries a new one, and the old one should be discarded.\n\n## One request per endpoint\nThis collection contains only the six operations, each on its happy path. The failure cases — wrong password, missing token, wrong role, malformed body, unknown code — are specified in `contracts/` and exercised deliberately in `quickstart.md`; they are not requests you want to run by accident with **Run collection**.\n\n## Products are addressed by CODE\nNo internal record number appears anywhere in this API, in either direction. A work order names its input and output products by the code the plant prints and files by.\n\n## ⚠️ Contract-first slice\nAuthentication, permissions and request validation are **fully implemented**. The product and work-order operations return **representative data and persist nothing** — so creating the same product code twice answers 201 twice, because there is no stored catalogue to conflict with. The 409 for a duplicate is specified in the contract and starts being produced when the behaviour slice lands, with no change to any URL, body, header or status code.\n\nLive document: `{{baseUrl}}/openapi/v1.json` · Interactive reference: `{{baseUrl}}/docs`"
+    "description": "Integration API for the Beta Platform: sign in for a bearer token, renew it with a refresh token, read and add products, and raise a work order.\n\n## Start here\n1. Set `baseUrl` (default `http://localhost:5045`, the app's default launch profile).\n2. Set `adminEmail` / `adminPassword`.\n3. Run **1 · Auth → Sign in**. It stores `{{accessToken}}` and `{{refreshToken}}`; every other request picks the access token up automatically.\n4. When the access token expires, run **Renew tokens** instead of signing in again.\n\nAccess tokens last **8 hours**; refresh tokens last **30 days** and are **rotated** on every renewal — the response always carries a new one, and the old one should be discarded.\n\n## One request per endpoint\nThis collection contains only the six operations, each on its happy path. The failure cases — wrong password, missing token, wrong role, malformed body, unknown code — are specified in `contracts/` and exercised deliberately in `quickstart.md`; they are not requests you want to run by accident with **Run collection**.\n\n## Products are addressed by CODE\nNo internal record number appears anywhere in this API, in either direction. A work order names its input and output products by the code the plant prints and files by — **several inputs, one output**: `inputProductCodes` is a list (at least one entry, none blank, no code twice), `outputProductCode` is a single code. An unresolvable input code is answered by a 400 naming its position, `inputProductCodes[i]`.\n\n## ⚠️ Contract-first slice\nAuthentication, permissions and request validation are **fully implemented**. The product and work-order operations return **representative data and persist nothing** — so creating the same product code twice answers 201 twice, because there is no stored catalogue to conflict with. The 409 for a duplicate is specified in the contract and starts being produced when the behaviour slice lands, with no change to any URL, body, header or status code.\n\nLive document: `{{baseUrl}}/openapi/v1.json` · Interactive reference: `{{baseUrl}}/docs`"
   },
   "auth": {
     "type": "bearer",
@@ -32,17 +32,6 @@
       "value": "Admin@123",
       "type": "string",
       "description": "The development seed password. Replace for any real environment."
-    },
-    {
-      "key": "sampleProductCode",
-      "value": "RM-STEEL-01",
-      "type": "string",
-      "description": "A code from the representative catalogue. Codes are trimmed and matched case-insensitively, so rm-steel-01 reaches the same product."
-    },
-    {
-      "key": "sampleOutputCode",
-      "value": "FG-PANEL-07",
-      "type": "string"
     },
     {
       "key": "accessToken",
@@ -300,7 +289,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/products/{{sampleProductCode}}",
+              "raw": "{{baseUrl}}/api/v1/products/RM-STEEL-01",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -308,7 +297,7 @@
                 "api",
                 "v1",
                 "products",
-                "{{sampleProductCode}}"
+                "RM-STEEL-01"
               ]
             },
             "description": "Addressed by product code. Codes are trimmed and matched case-insensitively, so `rm-steel-01` and `  RM-Steel-01  ` reach the same product."
@@ -385,7 +374,7 @@
     },
     {
       "name": "3 · Work orders",
-      "description": "The feature's end goal: an order whose input and output are named by product code.",
+      "description": "The feature's end goal: an order whose inputs and output are named by product code \u2014 a list of input codes, one output code.",
       "item": [
         {
           "name": "Create work order",
@@ -410,14 +399,14 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"workOrderNumber\": \"{{workOrderNumber}}\",\n  \"inputProductCode\": \"{{sampleProductCode}}\",\n  \"outputProductCode\": \"{{sampleOutputCode}}\",\n  \"plannedStartTime\": \"2026-09-01T06:00:00\",\n  \"qtyToManufacture\": 1200.5,\n  \"machineId\": 3,\n  \"hourRate\": 45.0,\n  \"lineSetupTimeMinutes\": 30,\n  \"workstationCapabilityPerHour\": 150.0\n}",
+              "raw": "{\n  \"workOrderNumber\": \"{{workOrderNumber}}\",\n  \"inputProductCodes\": [\"RM-STEEL-01\", \"RM-PAINT-02\"],\n  \"outputProductCode\": \"FG-PANEL-07\",\n  \"plannedStartTime\": \"2026-09-01T06:00:00\",\n  \"qtyToManufacture\": 1200.5,\n  \"machineId\": 3,\n  \"hourRate\": 45.0,\n  \"lineSetupTimeMinutes\": 30,\n  \"workstationCapabilityPerHour\": 150.0\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Admin or Client. Input and output named by product code; machineId is the one internal identifier that remains one — machines have no external code on this surface."
+            "description": "Admin or Client. Inputs are a LIST of product codes (at least one, none blank, no repeats); the output is a single code. machineId is the one internal identifier that remains one — machines have no external code on this surface."
           },
           "event": [
             {
@@ -436,9 +425,9 @@
                 "exec": [
                   "pm.test('201', () => pm.response.to.have.status(201));",
                   "const w = pm.response.json();",
-                  "pm.test('echoes both codes exactly as submitted', () => {",
-                  "  pm.expect(w.inputProductCode).to.eql(pm.collectionVariables.get('sampleProductCode'));",
-                  "  pm.expect(w.outputProductCode).to.eql(pm.collectionVariables.get('sampleOutputCode'));",
+                  "pm.test('echoes every code exactly as submitted, inputs in order', () => {",
+                  "  pm.expect(w.inputProductCodes).to.eql(['RM-STEEL-01', 'RM-PAINT-02']);",
+                  "  pm.expect(w.outputProductCode).to.eql('FG-PANEL-07');",
                   "});",
                   "pm.test('status is the NAME Ready, not an enum integer', () =>",
                   "  pm.expect(w.status).to.eql('Ready'));",

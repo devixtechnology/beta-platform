@@ -9,11 +9,18 @@
 > token is a second signed JWT with its own audience, not a stored record (research R12). Nothing
 > else in this plan moves.
 
+> **Amended 2026-09-01** — a work order names **several** input product codes and one output code, at
+> the author's request (FR-042 … FR-044, research R13). Still six operations and still no migration
+> *here*, because this slice persists nothing; the follow-up behaviour slice gains one — a
+> `work_order_input_products` join table — and that is stated wherever this plan promises the
+> follow-up is a registration change.
+
 ## Summary
 
 Open a small, machine-consumable surface on the existing MVC monolith: sign in for a bearer token,
 renew it without re-sending the password, read and add products, and raise a work order naming its
-input and output products **by product code**. Six operations, no schema change.
+input and output products **by product code** — several inputs, one output. Six operations, no schema
+change.
 
 The slice is contract-first by the author's decision. **Authentication, renewal, permission
 enforcement, and request validation are genuinely implemented**; the five business operations answer with
@@ -21,7 +28,8 @@ representative data and touch no product or work-order table. What makes that a 
 placeholder is the seam: controllers depend on `IProductApiService` / `IWorkOrderApiService`, which
 this slice satisfies with sample implementations and the follow-up slice satisfies with real ones
 that delegate to the existing `IProductService` / `IWorkOrderService` — two lines in `Program.cs`,
-and no route, DTO, or status code moves (FR-034, SC-005).
+and no route, DTO, or status code moves (FR-034, SC-005). Since the 2026-09-01 amendment that slice
+also carries one migration, for the input join table (R13); the seam itself is unchanged.
 
 The technical crux is coexistence. `AddIdentity` has already claimed the default authentication
 scheme for cookies, so the JWT handler is registered as an **additional, non-default** scheme and
@@ -79,15 +87,16 @@ primary-key lookup of the caller for revocation (research R3).
 | **I. Monolithic Architecture** | ✅ Pass | New controllers, DTOs, and services live inside the existing `src/BetaPlatform` project. No new process, no network hop, no separate API host — the API is a folder, not a service (R1 alternatives). |
 | **II. SOLID Design Principles** | ✅ Pass | Each new type has one reason to change: `JwtTokenService` issues tokens, the API services answer API operations, controllers map outcomes to status codes. All dependencies are interfaces resolved through the built-in DI container, which is precisely what makes the Phase-2 swap a registration change (R7). Interfaces are small and per-area rather than one broad `IApiService`. |
 | **III. Simplicity First (YAGNI)** | ⚠️ Pass with one logged item | Deliberately declined: a policy scheme selector (R1), a token denylist (R3), a custom error envelope (R5), Swashbuckle (R6), and a versioning library (R8) — each rejected as machinery for a problem this feature does not have. The one addition that *looks* speculative — two service interfaces whose only implementations return canned data — is logged in Complexity Tracking below, because the seam is the requirement rather than a guess. |
-| **IV. EF Core Migrations for All Schema (NON-NEGOTIABLE)** | ✅ Pass | No entity added, no property added, **no migration** — every field exchanged already exists. No raw SQL. Identity access goes through `UserManager`; nothing in this feature writes to the database at all. |
+| **IV. EF Core Migrations for All Schema (NON-NEGOTIABLE)** | ✅ Pass | No entity added, no property added, **no migration** — nothing in this feature writes to the database at all, and no raw SQL is used. Identity access goes through `UserManager`. Since the 2026-09-01 amendment one contract field (the input code **list**) has no column behind it yet; the principle is untouched because the slice stores nothing, and the join table it will need arrives in the follow-up slice **as an EF Core migration**, which is exactly what this principle demands (R13). |
 | **V. MVC Separation of Concerns** | ✅ Pass | Controllers coordinate and map; they hold no business rule and no `DbContext`. Token issuing and the operation outcomes sit in services. There are no views on this surface. The sample data lives in the service implementations, not in the controllers — the specific mistake that would break SC-005. |
 
 **Gate result: PASS.** One item carried to Complexity Tracking; no unjustified violation.
 
 **Post-Phase-1 re-evaluation**: unchanged. The design artifacts added DTOs and contracts but no new
 abstraction, no new dependency beyond the two named packages, and no schema change. The Phase 1
-`data-model.md` confirms every DTO field maps to a column that already exists, so Principle IV stays
-untouched by construction.
+`data-model.md` maps every DTO field to a column that already exists, with the single exception the
+2026-09-01 amendment introduces — the input code list, which this slice does not store and the
+follow-up slice migrates for (R13). Principle IV stays untouched by construction.
 
 ## Project Structure
 
