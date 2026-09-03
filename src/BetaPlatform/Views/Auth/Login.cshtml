@@ -1,15 +1,10 @@
 @using Microsoft.AspNetCore.Localization
 @model BetaPlatform.ViewModels.Auth.LoginViewModel
-@inject IConfiguration Configuration
-@inject IWebHostEnvironment Env
 @{
     Layout = null;
     var requestCulture = Context.Features.Get<IRequestCultureFeature>();
     var currentCulture = requestCulture?.RequestCulture.UICulture.Name ?? "en";
     var isRtl = currentCulture == "ar";
-    var showDefaults = Env.IsDevelopment();
-    var seedEmail = Configuration["AdminSeed:Email"] ?? "admin@beta.local";
-    var seedPassword = Configuration["AdminSeed:Password"] ?? "Admin@123";
     var theme = Context.Request.Cookies["beta_theme"] == "dark" ? "dark" : "light";
 }
 <!DOCTYPE html>
@@ -71,7 +66,7 @@
                         <label asp-for="Email" class="form-label">@Localizer["Email"]</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                            <input asp-for="Email" class="form-control" placeholder="@seedEmail" autofocus />
+                            <input asp-for="Email" class="form-control" placeholder="name@example.com" autofocus />
                         </div>
                     </div>
 
@@ -92,21 +87,6 @@
                         <i class="bi bi-box-arrow-in-right me-2"></i> @Localizer["SignIn"]
                     </button>
                 </form>
-
-                @if (showDefaults)
-                {
-                    <div class="mt-2 p-3 rounded" style="background: var(--surface-inset); border: 1px solid var(--border-soft);">
-                        <p class="text-muted small mb-2"><strong><i class="bi bi-info-circle me-1"></i>Default credentials</strong></p>
-                        <p class="mb-0 small"><strong>Admin:</strong> <code id="defEmail">@seedEmail</code> / <code id="defPassword">@seedPassword</code></p>
-                        <button type="button" id="fillDefaults" class="btn btn-sm btn-outline-primary w-100 mt-2">Use these</button>
-                    </div>
-                    <script>
-                        document.getElementById('fillDefaults').addEventListener('click', function () {
-                            document.getElementById('Email').value = document.getElementById('defEmail').textContent.trim();
-                            document.getElementById('Password').value = document.getElementById('defPassword').textContent.trim();
-                        });
-                    </script>
-                }
             </div>
         </div>
     </div>
