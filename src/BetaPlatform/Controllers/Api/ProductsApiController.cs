@@ -11,9 +11,9 @@ namespace BetaPlatform.Controllers.Api;
 /// The product catalogue, addressed by product code.
 /// </summary>
 /// <remarks>
-/// <strong>Representative data in this slice.</strong> Shapes, status codes, permissions and request
-/// validation are final and enforced; the responses are drawn from sample data and nothing is read
-/// from or written to the products table (FR-033).
+/// Answered from the platform's own catalogue (006). Reads and writes go through
+/// <c>IProductService</c>, the same service the Products screen uses, so the API and the screen
+/// enforce one set of rules rather than two that can drift.
 /// </remarks>
 [ApiController]
 [Route("api/v1/products")]
@@ -25,13 +25,13 @@ public class ProductsApiController : ApiControllerBase
     public ProductsApiController(IProductApiService products) => _products = products;
 
     /// <summary>
-    /// Lists the product catalogue. Representative data in this slice.
+    /// Lists the product catalogue.
     /// </summary>
     /// <param name="activeOnly">Exclude deactivated products.</param>
     /// <response code="200">The catalogue. An empty catalogue is an empty list, never a 404.</response>
     /// <response code="401">No token, expired, or the account was deactivated since issue.</response>
     [EndpointSummary("List the product catalogue")]
-    [EndpointDescription("REPRESENTATIVE DATA in this slice - nothing is read from the products table. An empty catalogue is an empty list, never a 404.")]
+    [EndpointDescription("The stored product catalogue. An empty catalogue is an empty list, never a 404. Set activeOnly=true to exclude deactivated products.")]
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<ProductResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -42,7 +42,7 @@ public class ProductsApiController : ApiControllerBase
     }
 
     /// <summary>
-    /// Gets one product by its product code. Representative data in this slice.
+    /// Gets one product by its product code.
     /// </summary>
     /// <remarks>
     /// Codes are trimmed and matched case-insensitively. A deactivated product is returned with
@@ -53,7 +53,7 @@ public class ProductsApiController : ApiControllerBase
     /// <response code="401">No token, expired, or the account was deactivated since issue.</response>
     /// <response code="404">No product carries that code.</response>
     [EndpointSummary("Get one product by its product code")]
-    [EndpointDescription("REPRESENTATIVE DATA in this slice. Codes are trimmed and matched case-insensitively. A deactivated product is returned with isActive=false rather than reported missing. An unknown code does answer 404 - the representative catalogue is finite.")]
+    [EndpointDescription("Codes are trimmed and matched case-insensitively. A deactivated product is returned with isActive=false rather than reported missing - 'never existed' and 'no longer used' are different answers. A code carried by no product answers 404.")]
     [HttpGet("{productCode}")]
     [ProducesResponseType(typeof(ProductResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -65,13 +65,13 @@ public class ProductsApiController : ApiControllerBase
     }
 
     /// <summary>
-    /// Creates a product. Administrators only. The submission is genuinely validated and
-    /// permission-checked; it is NOT persisted in this slice.
+    /// Creates a product. Administrators only. Stored, and immediately visible to the reads above
+    /// and to the platform's own Products screen.
     /// </summary>
     /// <remarks>
-    /// A created product is always active — the request cannot say otherwise. The 409 for a code
-    /// already in use is specified here and answered by this action, but cannot occur until the
-    /// behaviour slice has a catalogue to check against.
+    /// A created product is always active — the request cannot say otherwise. A code already carried
+    /// by another product answers 409: a well-formed request the stored data disagrees with, not a
+    /// malformed one, so the caller retries with a new code rather than hunting its payload.
     /// </remarks>
     /// <response code="201">The created product, in the same shape the reads return.</response>
     /// <response code="400">A required field is missing, too long, or the body is unparsable.</response>
@@ -79,7 +79,7 @@ public class ProductsApiController : ApiControllerBase
     /// <response code="403">Authenticated, but not an administrator.</response>
     /// <response code="409">A product with this code already exists.</response>
     [EndpointSummary("Create a product (administrators only)")]
-    [EndpointDescription("Request validation and permissions are ENFORCED; the product is NOT PERSISTED in this slice. A created product is always active - the request cannot say otherwise. The 409 for a duplicate product code is specified but NOT YET PRODUCED.")]
+    [EndpointDescription("Stores the product and returns it, with a Location addressing it by CODE. A created product is always active - the request cannot say otherwise. A code already in use answers 409, compared trimmed and case-insensitively.")]
     [HttpPost]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = DbSeeder.AdminRole)]
     [ProducesResponseType(typeof(ProductResponse), StatusCodes.Status201Created)]

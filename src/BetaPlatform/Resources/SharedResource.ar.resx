@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
@@ -101,6 +101,7 @@
   <data name="WorkOrder" xml:space="preserve"><value>أمر تشغيل</value></data>
   <data name="WorkOrderNumber" xml:space="preserve"><value>رقم أمر التشغيل</value></data>
   <data name="InputProduct" xml:space="preserve"><value>منتج الإدخال</value></data>
+  <data name="InputProducts" xml:space="preserve"><value>منتجات الإدخال</value></data>
   <data name="OutputProduct" xml:space="preserve"><value>منتج الإخراج</value></data>
   <data name="AssignedMachine" xml:space="preserve"><value>الآلة المخصصة</value></data>
   <data name="PlannedStartTime" xml:space="preserve"><value>وقت البدء المخطط</value></data>
@@ -251,4 +252,28 @@
   <data name="DisplayNoMachinesTitle" xml:space="preserve"><value>لا توجد ماكينات نشطة</value></data>
   <data name="DisplayNoMachinesText" xml:space="preserve"><value>أضف ماكينة أو أعد تفعيلها لتظهر على هذه الشاشة.</value></data>
   <data name="PageIndicator" xml:space="preserve"><value>صفحة</value></data>
+  <data name="ErpSettings" xml:space="preserve"><value>إعدادات نظام ERP</value></data>
+  <data name="ErpConnection" xml:space="preserve"><value>الاتصال</value></data>
+  <data name="ErpCredentials" xml:space="preserve"><value>بيانات الاعتماد</value></data>
+  <data name="ErpBaseUrl" xml:space="preserve"><value>عنوان نظام ERP</value></data>
+  <data name="ErpBaseUrlHelp" xml:space="preserve"><value>يُضبط في ملف appsettings.json ضمن Erp:BaseUrl. هو جزء من إعداد النشر ولا يُعدَّل من هنا.</value></data>
+  <data name="ErpApiToken" xml:space="preserve"><value>رمز الواجهة البرمجية</value></data>
+  <data name="ErpApiTokenHelp" xml:space="preserve"><value>يُرسل في ترويسة X-API-Key مع كل طلب إلى نظام ERP. اتركه فارغًا لإيقاف الإرسال.</value></data>
+  <data name="ErpShowToken" xml:space="preserve"><value>إظهار الرمز</value></data>
+  <data name="ErpStatus" xml:space="preserve"><value>حالة التكامل</value></data>
+  <data name="ErpMode" xml:space="preserve"><value>الوضع</value></data>
+  <data name="ErpModeLive" xml:space="preserve"><value>مُفعَّل</value></data>
+  <data name="ErpModeMocked" xml:space="preserve"><value>محاكاة</value></data>
+  <data name="ErpTokenStored" xml:space="preserve"><value>محفوظ</value></data>
+  <data name="ErpTokenMissing" xml:space="preserve"><value>غير محدد</value></data>
+  <data name="ErpLastUpdated" xml:space="preserve"><value>آخر تحديث</value></data>
+  <data name="ErpUpdatedBy" xml:space="preserve"><value>حُدِّث بواسطة</value></data>
+  <data name="ErpNotConfigured" xml:space="preserve"><value>لم يتم إعداد نظام ERP</value></data>
+  <data name="ErpNotConfiguredText" xml:space="preserve"><value>قيمة Erp:BaseUrl فارغة، لذا تُسجَّل أحداث أوامر العمل في السجل بدلًا من إرسالها. تعمل أوامر العمل كالمعتاد تمامًا.</value></data>
+  <data name="ErpConnected" xml:space="preserve"><value>تكامل نظام ERP مُفعَّل</value></data>
+  <data name="ErpConnectedText" xml:space="preserve"><value>تُرسل أحداث أوامر العمل إلى نظام ERP. يُسجَّل أي طلب فاشل ولا يُعيق أمر العمل إطلاقًا.</value></data>
+  <data name="ErpEventsSent" xml:space="preserve"><value>الأحداث المُرسلة إلى ERP</value></data>
+  <data name="ErpEventStart" xml:space="preserve"><value>بدء أمر العمل واستئنافه</value></data>
+  <data name="ErpEventHold" xml:space="preserve"><value>تعليق أمر العمل</value></data>
+  <data name="ErpEventFinish" xml:space="preserve"><value>إنهاء أمر العمل مع الوزن المُنتَج</value></data>
 </root>

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using BetaPlatform.Data;
 using BetaPlatform.Data.Entities;
+using BetaPlatform.Services.Api;
 
 namespace BetaPlatform.Services;
 
@@ -9,6 +10,20 @@ public interface IProductService
     Task<List<Product>> SearchAsync(string? term);
     Task<List<Product>> GetActiveAsync();
     Task<Product?> GetByIdAsync(int id);
+
+    /// <summary>
+    /// One product by the code the plant prints and files by — trimmed, matched case-insensitively.
+    /// Null when no product carries it. Returns a deactivated product like any other: "never
+    /// existed" and "no longer used" are different answers (006 FR-003/FR-004).
+    /// </summary>
+    Task<Product?> GetByCodeAsync(string? code);
+
+    /// <summary>
+    /// Every product carrying one of <paramref name="codes"/>, matched the same way as
+    /// <see cref="GetByCodeAsync"/>. One round trip rather than one per code, because a work order
+    /// resolves its whole list before storing anything (006 FR-012).
+    /// </summary>
+    Task<List<Product>> GetByCodesAsync(IEnumerable<string> codes);
     Task<ServiceResult<Product>> CreateAsync(Product product);
     Task<ServiceResult<Product>> UpdateAsync(Product product);
     Task<ServiceResult> DeactivateAsync(int id);
@@ -40,6 +55,45 @@ public class ProductService : IProductService
 
     public Task<Product?> GetByIdAsync(int id) =>
         _db.Products.FirstOrDefaultAsync(p => p.ProductId == id);
+
+    public Task<Product?> GetByCodeAsync(string? code)
+    {
+        var normalised = ProductCode.Normalise(code);
+
+        // An empty code is not an identity and must never match — including matching another empty
+        // one. Asked of the database, `ProductCode == ""` could match a row that should not exist;
+        // refusing here means it cannot.
+        if (normalised.Length == 0)
+        {
+            return Task.FromResult<Product?>(null);
+        }
+
+        // Lower-cased on both sides ON PURPOSE rather than leaning on MySQL's case-insensitive
+        // default collation. Relying on the collation would make this agree with
+        // ProductCode.Matches by accident of a server setting: change the collation, or run against
+        // any other provider, and the API quietly starts refusing codes the screens accept
+        // (005 research R9 warns about exactly this discrepancy).
+        var lowered = normalised.ToLower();
+        return _db.Products.FirstOrDefaultAsync(p => p.ProductCode.ToLower() == lowered);
+    }
+
+    public Task<List<Product>> GetByCodesAsync(IEnumerable<string> codes)
+    {
+        // Lower-cased for the same reason as GetByCodeAsync: the comparison is stated here, not
+        // inherited from the server's collation.
+        var lowered = codes
+            .Select(c => ProductCode.Normalise(c).ToLower())
+            .Where(c => c.Length > 0)
+            .Distinct()
+            .ToList();
+
+        if (lowered.Count == 0)
+        {
+            return Task.FromResult(new List<Product>());
+        }
+
+        return _db.Products.Where(p => lowered.Contains(p.ProductCode.ToLower())).ToListAsync();
+    }
 
     public async Task<ServiceResult<Product>> CreateAsync(Product product)
     {

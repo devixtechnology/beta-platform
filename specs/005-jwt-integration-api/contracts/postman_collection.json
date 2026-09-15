@@ -3,17 +3,7 @@
     "name": "Beta Platform — Integration API (v1)",
     "_postman_id": "b3ta0005-1nt3-4a91-9v01-c0llect10n05",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Integration API for the Beta Platform: sign in for a bearer token, renew it with a refresh token, read and add products, and raise a work order.\n\n## Start here\n1. Set `baseUrl` (default `http://localhost:5045`, the app's default launch profile).\n2. Set `adminEmail` / `adminPassword`.\n3. Run **1 · Auth → Sign in**. It stores `{{accessToken}}` and `{{refreshToken}}`; every other request picks the access token up automatically.\n4. When the access token expires, run **Renew tokens** instead of signing in again.\n\nAccess tokens last **8 hours**; refresh tokens last **30 days** and are **rotated** on every renewal — the response always carries a new one, and the old one should be discarded.\n\n## One request per endpoint\nThis collection contains only the six operations, each on its happy path. The failure cases — wrong password, missing token, wrong role, malformed body, unknown code — are specified in `contracts/` and exercised deliberately in `quickstart.md`; they are not requests you want to run by accident with **Run collection**.\n\n## Products are addressed by CODE\nNo internal record number appears anywhere in this API, in either direction. A work order names its input and output products by the code the plant prints and files by — **several inputs, one output**: `inputProductCodes` is a list (at least one entry, none blank, no code twice), `outputProductCode` is a single code. An unresolvable input code is answered by a 400 naming its position, `inputProductCodes[i]`.\n\n## ⚠️ Contract-first slice\nAuthentication, permissions and request validation are **fully implemented**. The product and work-order operations return **representative data and persist nothing** — so creating the same product code twice answers 201 twice, because there is no stored catalogue to conflict with. The 409 for a duplicate is specified in the contract and starts being produced when the behaviour slice lands, with no change to any URL, body, header or status code.\n\nLive document: `{{baseUrl}}/openapi/v1.json` · Interactive reference: `{{baseUrl}}/docs`"
-  },
-  "auth": {
-    "type": "bearer",
-    "bearer": [
-      {
-        "key": "token",
-        "value": "{{accessToken}}",
-        "type": "string"
-      }
-    ]
+    "description": "Integration API for the Beta Platform: sign in for a bearer token, renew it with a refresh token, read and add products, and raise a work order.\n\n## Start here\n1. Set `baseUrl` (default `http://localhost:5045`, the app's default launch profile).\n2. Set `adminEmail` / `adminPassword`.\n3. Run **1 · Auth → Sign in**. It stores `{{accessToken}}` and `{{refreshToken}}`.\n4. Run **2 · Products → List products** and **2b · Machines → List machines**. Between them they pick real product codes and a real machine id out of your database and store them, so the work-order requests below run against your data rather than against values invented here.\n5. When the access token expires, run **Renew tokens** instead of signing in again.\n\nAccess tokens last **8 hours**; refresh tokens last **30 days** and are **rotated** on every renewal — the response always carries a new one, and the old one should be discarded.\n\n## Every protected request shows its token\nEach authenticated request carries its own `Authorization: Bearer {{accessToken}}` header, spelled out on the request rather than inherited from the collection. It is the same credential either way; stating it means you can read any single request and see exactly what it sends. `POST /auth/login`, `POST /auth/refresh` and the OpenAPI document are the only anonymous calls.\n\n## Products are addressed by CODE — machines by id\nNo **product** record number appears anywhere in this API, in either direction. `GET /machines` is the deliberate exception: a machine has no external code on this surface, and `machineId` is what a work order has to name, so that endpoint returns it. A work order names its input and output products by the code the plant prints and files by — **several inputs, one output**: `inputProductCodes` is a list (at least one entry, none blank, no code twice), `outputProductCode` is a single code. An unresolvable input is answered by a 400 naming its position, `inputProductCodes[i]`, and if several entries are wrong they are all named in the same response.\n\n## What the folders are for\n**0–3** are the seven operations on their happy paths, in the order you would run them. **4 · Refusals** exercises the failures deliberately — an unknown code, a duplicate code, a duplicate order number, a deactivated product. They are separated so that **Run collection** stays predictable, and they depend on 1–3 having run first in the same session.\n\nLive document: `{{baseUrl}}/openapi/v1.json` · Interactive reference: `{{baseUrl}}/docs`"
   },
   "variable": [
     {
@@ -37,7 +27,7 @@
       "key": "accessToken",
       "value": "",
       "type": "string",
-      "description": "Set automatically by Sign in and by Renew tokens. 8-hour life."
+      "description": "Set automatically by Sign in and by Renew tokens. 8-hour life. Sent explicitly by every protected request."
     },
     {
       "key": "refreshToken",
@@ -46,10 +36,46 @@
       "description": "Set automatically by Sign in and rotated by Renew tokens. 30-day life. As secret as the password it stands in for."
     },
     {
+      "key": "inputProductCode1",
+      "value": "",
+      "type": "string",
+      "description": "An active product code from YOUR catalogue. Set automatically by List products."
+    },
+    {
+      "key": "inputProductCode2",
+      "value": "",
+      "type": "string",
+      "description": "A second active product code, if the catalogue holds one. Set automatically by List products."
+    },
+    {
+      "key": "outputProductCode",
+      "value": "",
+      "type": "string",
+      "description": "The product the order produces. Set automatically by List products."
+    },
+    {
+      "key": "knownProductCode",
+      "value": "",
+      "type": "string",
+      "description": "Any code known to exist, used by Get product by code. Set automatically by List products."
+    },
+    {
+      "key": "createdProductCode",
+      "value": "",
+      "type": "string",
+      "description": "The code Create product just stored, so the duplicate-code refusal has something real to collide with."
+    },
+    {
       "key": "workOrderNumber",
       "value": "",
       "type": "string",
-      "description": "Generated per request by a pre-request script."
+      "description": "Generated per request by a pre-request script, and reused by the duplicate-number refusal."
+    },
+    {
+      "key": "machineId",
+      "value": "",
+      "type": "string",
+      "description": "A real machine id. Set automatically by List machines, and sent by Create work order."
     }
   ],
   "item": [
@@ -75,7 +101,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "The machine-readable contract (FR-032). You can import this URL into Postman directly if you would rather generate requests than use this collection."
+            "description": "The machine-readable contract (FR-032). Anonymous by design — it carries endpoint shapes, no data. You can import this URL into Postman directly if you would rather generate requests than use this collection."
           },
           "event": [
             {
@@ -85,14 +111,20 @@
                 "exec": [
                   "pm.test('200', () => pm.response.to.have.status(200));",
                   "const doc = pm.response.json();",
-                  "pm.test('describes all six operations', () => {",
+                  "pm.test('describes all seven operations', () => {",
                   "  const ops = Object.values(doc.paths).reduce((n, p) => n + Object.keys(p).length, 0);",
-                  "  pm.expect(ops).to.eql(6);",
+                  "  pm.expect(ops).to.eql(7);",
                   "});",
                   "pm.test('declares the bearer scheme', () =>",
                   "  pm.expect(doc.components.securitySchemes).to.have.property('bearerAuth'));",
-                  "pm.test('carries the slice note', () =>",
-                  "  pm.expect(doc.info.description).to.include('SLICE NOTE'));"
+                  "pm.test('no longer claims the data is representative', () => {",
+                  "  const text = JSON.stringify(doc).toUpperCase();",
+                  "  pm.expect(text).to.not.include('SLICE NOTE');",
+                  "  pm.expect(text).to.not.include('NOT PERSISTED');",
+                  "  pm.expect(text).to.not.include('REPRESENTATIVE');",
+                  "});",
+                  "pm.test('describes the machine list, ids included', () =>",
+                  "  pm.expect(doc.components.schemas.Machine.properties).to.have.property('machineId'));"
                 ]
               }
             }
@@ -102,7 +134,7 @@
     },
     {
       "name": "1 · Auth",
-      "description": "Fully implemented — a real account, a real password check, a real token.",
+      "description": "A real account, a real password check, a real token.",
       "item": [
         {
           "name": "Sign in  ▶ saves {{accessToken}} + {{refreshToken}}",
@@ -138,7 +170,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Stores both tokens as collection variables. The access token lasts 8 hours; when it expires run **Renew tokens** rather than sending the password again."
+            "description": "Anonymous — the password is the credential. Stores both tokens as collection variables. The access token lasts 8 hours; when it expires run **Renew tokens** rather than sending the password again."
           },
           "event": [
             {
@@ -240,13 +272,19 @@
     },
     {
       "name": "2 · Products",
-      "description": "Shapes final; the data behind them is representative in this slice.",
+      "description": "The stored catalogue. Reads come from the products table; a created product is stored and appears on the platform's own Products screen.",
       "item": [
         {
-          "name": "List products",
+          "name": "List products  ▶ saves real codes for the requests below",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "The token stored by Sign in. Stated here rather than inherited, so the request shows what it sends."
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/products",
               "host": [
@@ -262,11 +300,14 @@
                   "key": "activeOnly",
                   "value": "true",
                   "disabled": true,
-                  "description": "Enable to exclude deactivated products. Part of the agreed contract even while it filters representative data."
+                  "description": "Enable to exclude deactivated products."
                 }
               ]
             },
-            "description": "Any authenticated caller. An empty catalogue is `[]`, never a 404. Enable the `activeOnly` query parameter to filter."
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Any authenticated caller. The whole stored catalogue; an empty catalogue is `[]`, never a 404. Enable the `activeOnly` query parameter to exclude deactivated products.\n\nIts test script stores two active codes and one output code, so the work-order requests below run against products that actually exist in your database."
           },
           "event": [
             {
@@ -275,9 +316,24 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('200', () => pm.response.to.have.status(200));",
-                  "pm.test('returns an array', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "const products = pm.response.json();",
+                  "pm.test('returns an array', () => pm.expect(products).to.be.an('array'));",
                   "pm.test('no product id anywhere (FR-022)', () =>",
-                  "  pm.expect(pm.response.text().toLowerCase()).to.not.include('productid'));"
+                  "  pm.expect(pm.response.text().toLowerCase()).to.not.include('productid'));",
+                  "",
+                  "const active = products.filter(p => p.isActive);",
+                  "if (active.length === 0) {",
+                  "  console.warn('No active products. Add some on the Products screen, or run Create product first, then re-run this request.');",
+                  "} else {",
+                  "  pm.collectionVariables.set('knownProductCode', active[0].productCode);",
+                  "  pm.collectionVariables.set('inputProductCode1', active[0].productCode);",
+                  "  pm.collectionVariables.set('inputProductCode2', (active[1] || active[0]).productCode);",
+                  "  // May legitimately repeat an input: a rework order consumes and produces the same product.",
+                  "  pm.collectionVariables.set('outputProductCode', (active[active.length - 1] || active[0]).productCode);",
+                  "  console.log('Using inputs ' + pm.collectionVariables.get('inputProductCode1') +",
+                  "              ' + ' + pm.collectionVariables.get('inputProductCode2') +",
+                  "              ', output ' + pm.collectionVariables.get('outputProductCode'));",
+                  "}"
                 ]
               }
             }
@@ -287,9 +343,14 @@
           "name": "Get product by code",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/products/RM-STEEL-01",
+              "raw": "{{baseUrl}}/api/v1/products/{{knownProductCode}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -297,10 +358,13 @@
                 "api",
                 "v1",
                 "products",
-                "RM-STEEL-01"
+                "{{knownProductCode}}"
               ]
             },
-            "description": "Addressed by product code. Codes are trimmed and matched case-insensitively, so `rm-steel-01` and `  RM-Steel-01  ` reach the same product."
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Addressed by product code. Codes are trimmed and matched case-insensitively, so `rm-steel-01` and `  RM-Steel-01  ` reach the same product.\n\nA **deactivated** product is returned here, marked `isActive: false`, rather than reported missing — \"never existed\" and \"no longer used\" are different answers, and a caller reconciling history needs to tell them apart."
           },
           "event": [
             {
@@ -314,6 +378,9 @@
                   "  ['productCode','productName','productNameEnglish','category','unit','isActive']",
                   "    .forEach(k => pm.expect(p).to.have.property(k));",
                   "});",
+                  "pm.test('is the product that was asked for', () =>",
+                  "  pm.expect(p.productCode.toLowerCase())",
+                  "    .to.eql(pm.collectionVariables.get('knownProductCode').trim().toLowerCase()));",
                   "pm.test('no product id anywhere (FR-022)', () =>",
                   "  pm.expect(pm.response.text().toLowerCase()).to.not.include('productid'));"
                 ]
@@ -322,13 +389,18 @@
           ]
         },
         {
-          "name": "Create product (Admin)",
+          "name": "Create product (Admin)  ▶ saves {{createdProductCode}}",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "Must belong to an administrator — a Client token is refused with 403."
               }
             ],
             "url": {
@@ -344,25 +416,40 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"productCode\": \"RM-NEW-{{$randomInt}}\",\n  \"productName\": \"منتج جديد\",\n  \"productNameEnglish\": \"New Product\",\n  \"category\": \"Raw Material\",\n  \"unit\": \"kg\"\n}",
+              "raw": "{\n  \"productCode\": \"{{createdProductCode}}\",\n  \"productName\": \"منتج جديد\",\n  \"productNameEnglish\": \"New Product\",\n  \"category\": \"Raw Material\",\n  \"unit\": \"kg\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Admin only. Validated and permission-checked for real; NOT persisted in this slice. Note there is no isActive field to send — a created product is always active (FR-017)."
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Admin only. **Stored** — open the Products screen after running this and the product is there. Note there is no `isActive` field to send: a created product is always active.\n\nThe code is generated per run by a pre-request script and kept in `{{createdProductCode}}`, so **4 · Refusals** has a real code to collide with."
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('createdProductCode', 'RM-API-' + Date.now());"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('201', () => pm.response.to.have.status(201));",
+                  "const p = pm.response.json();",
                   "pm.test('Location addresses it by CODE, not an id', () =>",
                   "  pm.expect(pm.response.headers.get('Location')).to.include('/api/v1/products/'));",
-                  "pm.test('created active', () => pm.expect(pm.response.json().isActive).to.be.true);",
+                  "pm.test('created active', () => pm.expect(p.isActive).to.be.true);",
+                  "pm.test('echoes the code it stored', () =>",
+                  "  pm.expect(p.productCode).to.eql(pm.collectionVariables.get('createdProductCode')));",
                   "pm.test('no product id anywhere (FR-022)', () =>",
                   "  pm.expect(pm.response.text().toLowerCase()).to.not.include('productid'));"
                 ]
@@ -373,8 +460,86 @@
       ]
     },
     {
+      "name": "2b · Machines",
+      "description": "The fleet, with ids.\n\nThis is the one place the API returns a record id, and it is deliberate: a product has an external identity — the code the plant prints — so its record number is a detail a caller must never need, while a machine has no such code on this surface and `machineId` is exactly what **3 · Work orders** asks for.",
+      "item": [
+        {
+          "name": "List machines  ▶ saves {{machineId}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "The token stored by Sign in."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/machines",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "machines"
+              ],
+              "query": [
+                {
+                  "key": "activeOnly",
+                  "value": "true",
+                  "disabled": true,
+                  "description": "Enable to exclude deactivated machines."
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Any authenticated caller. Every machine with its full detail: `machineId`, code, name, its type (id, Arabic and English names, production line), the stored `isActive` and `isRunning` flags, the live `runningState`, and when it was created. An empty fleet is `[]`, never a 404.\n\n**`isRunning` is not `runningState`.** The first is a stored administrator flag; the second is the live state, by the same rule every screen uses — an in-progress work order forces `Running`, otherwise the latest telemetry reading decides, and a machine that has never reported or whose reading has gone stale is `Stopped`, because silence means not producing. `Unknown` survives only for a fresh reading whose status cannot be interpreted.\n\nIts test script stores the first active machine's id in `{{machineId}}`, which **3 · Work orders** then sends."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const machines = pm.response.json();",
+                  "pm.test('returns an array', () => pm.expect(machines).to.be.an('array'));",
+                  "",
+                  "if (machines.length === 0) {",
+                  "  console.warn('No machines. Add one on the Machines screen, then re-run.');",
+                  "} else {",
+                  "  pm.test('carries the full machine shape', () => {",
+                  "    ['machineId','machineCode','machineName','machineTypeId','machineTypeName',",
+                  "     'machineTypeNameEnglish','productionLine','isActive','isRunning','runningState','createdAt']",
+                  "      .forEach(k => pm.expect(machines[0]).to.have.property(k));",
+                  "  });",
+                  "  pm.test('the id is present and usable (this endpoint DOES return it)', () => {",
+                  "    pm.expect(machines[0].machineId).to.be.a('number');",
+                  "    pm.expect(machines[0].machineId).to.be.above(0);",
+                  "  });",
+                  "  pm.test('runningState is a NAME, not an enum integer', () =>",
+                  "    pm.expect(machines[0].runningState).to.be.oneOf(['Running','Stopped','Unknown']));",
+                  "  pm.test('no PRODUCT id leaks in (the machine id is the only id here)', () =>",
+                  "    pm.expect(pm.response.text().toLowerCase()).to.not.include('productid'));",
+                  "",
+                  "  const active = machines.filter(m => m.isActive);",
+                  "  const chosen = (active[0] || machines[0]);",
+                  "  pm.collectionVariables.set('machineId', chosen.machineId);",
+                  "  console.log('Using machine ' + chosen.machineId + ' (' + chosen.machineCode + ')');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "3 · Work orders",
-      "description": "The feature's end goal: an order whose inputs and output are named by product code \u2014 a list of input codes, one output code.",
+      "description": "The feature's end goal: an order whose inputs and output are named by product code — a list of input codes, one output code — resolved against the real catalogue and stored.",
       "item": [
         {
           "name": "Create work order",
@@ -384,6 +549,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "Admin or Client. Any other authenticated account is refused with 403."
               }
             ],
             "url": {
@@ -399,14 +569,17 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"workOrderNumber\": \"{{workOrderNumber}}\",\n  \"inputProductCodes\": [\"RM-STEEL-01\", \"RM-PAINT-02\"],\n  \"outputProductCode\": \"FG-PANEL-07\",\n  \"plannedStartTime\": \"2026-09-01T06:00:00\",\n  \"qtyToManufacture\": 1200.5,\n  \"machineId\": 3,\n  \"hourRate\": 45.0,\n  \"lineSetupTimeMinutes\": 30,\n  \"workstationCapabilityPerHour\": 150.0\n}",
+              "raw": "{\n  \"workOrderNumber\": \"{{workOrderNumber}}\",\n  \"inputProductCodes\": [\"{{inputProductCode1}}\", \"{{inputProductCode2}}\"],\n  \"outputProductCode\": \"{{outputProductCode}}\",\n  \"plannedStartTime\": \"2026-09-01T06:00:00\",\n  \"qtyToManufacture\": 1200.5,\n  \"machineId\": {{machineId}},\n  \"hourRate\": 45.0,\n  \"lineSetupTimeMinutes\": 30,\n  \"workstationCapabilityPerHour\": 150.0\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Admin or Client. Inputs are a LIST of product codes (at least one, none blank, no repeats); the output is a single code. machineId is the one internal identifier that remains one — machines have no external code on this surface."
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Admin or Client. Inputs are a LIST of product codes (at least one, none blank, no repeats); the output is a single code. Every code is resolved against the stored catalogue before anything is written, so a refused order stores **nothing**.\n\n`machineId` is the one internal identifier that remains one — machines have no external code on this surface. It is filled in by **2b · Machines → List machines**; the field is optional, so you can also remove it.\n\nRun **2 · Products → List products** first so the codes below point at products you actually have.\n\nThe order appears on the Work Orders screen in status Ready, and its Details page lists every input product."
           },
           "event": [
             {
@@ -414,7 +587,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.collectionVariables.set('workOrderNumber', 'WO-' + Date.now());"
+                  "pm.collectionVariables.set('workOrderNumber', 'WO-' + Date.now());",
+                  "if (!pm.collectionVariables.get('inputProductCode1')) {",
+                  "  console.warn('No product codes stored. Run 2 · Products → List products first.');",
+                  "}"
                 ]
               }
             },
@@ -425,14 +601,272 @@
                 "exec": [
                   "pm.test('201', () => pm.response.to.have.status(201));",
                   "const w = pm.response.json();",
-                  "pm.test('echoes every code exactly as submitted, inputs in order', () => {",
-                  "  pm.expect(w.inputProductCodes).to.eql(['RM-STEEL-01', 'RM-PAINT-02']);",
-                  "  pm.expect(w.outputProductCode).to.eql('FG-PANEL-07');",
+                  "const sent = JSON.parse(pm.request.body.raw);",
+                  "pm.test('echoes every code, inputs in the order submitted', () => {",
+                  "  pm.expect(w.inputProductCodes.map(c => c.toLowerCase()))",
+                  "    .to.eql(sent.inputProductCodes.map(c => c.trim().toLowerCase()));",
+                  "  pm.expect(w.outputProductCode.toLowerCase())",
+                  "    .to.eql(sent.outputProductCode.trim().toLowerCase());",
                   "});",
                   "pm.test('status is the NAME Ready, not an enum integer', () =>",
                   "  pm.expect(w.status).to.eql('Ready'));",
                   "pm.test('no product id anywhere (FR-022)', () =>",
                   "  pm.expect(pm.response.text().toLowerCase()).to.not.include('productid'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 · Refusals",
+      "description": "The failures, exercised on purpose. Each one depends on folders 1–3 having run in this session: they reuse the token, the product code that was just created, and the work-order number that was just used.\n\nThese are the outcomes the contract specified from the start. They are now produced by real stored data rather than documented against a catalogue that did not exist.",
+      "item": [
+        {
+          "name": "Unknown product code → 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/NO-SUCH-CODE-00",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                "NO-SUCH-CODE-00"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "A code no product carries. 404 with a ProblemDetails body — the addressed resource does not exist."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404', () => pm.response.to.have.status(404));",
+                  "pm.test('answers in the one error shape', () =>",
+                  "  pm.expect(pm.response.json()).to.have.property('status', 404));",
+                  "pm.test('leaks no diagnostics', () => {",
+                  "  const text = pm.response.text().toLowerCase();",
+                  "  pm.expect(text).to.not.include('stacktrace');",
+                  "  pm.expect(text).to.not.include('mysql');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Duplicate product code → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productCode\": \"  {{createdProductCode}}  \",\n  \"productName\": \"تكرار\",\n  \"productNameEnglish\": \"Duplicate\",\n  \"unit\": \"kg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Re-sends the code **2 · Products → Create product** just stored, padded with spaces to show that padding is not part of a code's identity.\n\n409, not 400: the request is perfectly well formed, the stored data disagrees with it. A caller branches on the code and retries with a different one rather than hunting its payload for a formatting mistake.\n\nRun Create product first, or this sends an empty code and gets a 400 instead."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409', () => pm.response.to.have.status(409));",
+                  "pm.test('not reported as a malformed request', () =>",
+                  "  pm.expect(pm.response.code).to.not.eql(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unresolvable input code → 400 naming the position",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/work-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "work-orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workOrderNumber\": \"WO-BAD-{{$randomInt}}\",\n  \"inputProductCodes\": [\"{{inputProductCode1}}\", \"NO-SUCH-CODE-01\", \"NO-SUCH-CODE-02\"],\n  \"outputProductCode\": \"NO-SUCH-CODE-03\",\n  \"plannedStartTime\": \"2026-09-01T06:00:00\",\n  \"qtyToManufacture\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Three codes that resolve to nothing — two inputs and the output. 400, **not** 404: the endpoint is not missing, the body is wrong.\n\nThe response names every offending entry at once, by its submitted position: `inputProductCodes[1]`, `inputProductCodes[2]`, `outputProductCode`. A caller with a list of materials has to be told which entry to fix — and told about all of them in one round trip rather than three.\n\nNothing is stored."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400, not 404', () => pm.response.to.have.status(400));",
+                  "const errors = pm.response.json().errors;",
+                  "pm.test('names each bad entry by its submitted position', () => {",
+                  "  pm.expect(errors).to.have.property('inputProductCodes[1]');",
+                  "  pm.expect(errors).to.have.property('inputProductCodes[2]');",
+                  "});",
+                  "pm.test('names the bad output too, in the same response', () =>",
+                  "  pm.expect(errors).to.have.property('outputProductCode'));",
+                  "pm.test('does not blame the entry that was fine', () =>",
+                  "  pm.expect(errors).to.not.have.property('inputProductCodes[0]'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Duplicate work-order number → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/work-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "work-orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workOrderNumber\": \"{{workOrderNumber}}\",\n  \"inputProductCodes\": [\"{{inputProductCode1}}\"],\n  \"outputProductCode\": \"{{outputProductCode}}\",\n  \"plannedStartTime\": \"2026-09-01T06:00:00\",\n  \"qtyToManufacture\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Reuses the number **3 · Work orders → Create work order** just used. 409 — a well-formed request the stored data disagrees with. Nothing is stored.\n\nRun Create work order first, or this sends an empty number and gets a 400 instead."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409', () => pm.response.to.have.status(409));",
+                  "pm.test('not reported as a malformed request', () =>",
+                  "  pm.expect(pm.response.code).to.not.eql(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "No token → 401 (never a redirect to the login page)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "The same request as **List products** with its `Authorization` header removed.\n\nA bare 401 — not a 302 to `/Auth/Login`. That is the whole reason bearer is registered as an additional, non-default scheme and named explicitly on each API controller: the browser screens keep their cookie sign-in, and an unauthenticated API call gets an answer a machine can act on."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401', () => pm.response.to.have.status(401));",
+                  "pm.test('not redirected to a sign-in page', () => {",
+                  "  pm.expect(pm.response.code).to.not.be.oneOf([301, 302]);",
+                  "  pm.expect(pm.response.text().toLowerCase()).to.not.include('<form');",
+                  "});"
                 ]
               }
             }

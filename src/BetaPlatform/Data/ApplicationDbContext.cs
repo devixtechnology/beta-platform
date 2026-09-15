@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using BetaPlatform.Data.Entities;
 
@@ -16,6 +16,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Product> Products => Set<Product>();
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
     public DbSet<WorkOrderInput> WorkOrderInputs => Set<WorkOrderInput>();
+    public DbSet<WorkOrderOutput> WorkOrderOutputs => Set<WorkOrderOutput>();
+    public DbSet<WorkOrderInputProduct> WorkOrderInputProducts => Set<WorkOrderInputProduct>();
     public DbSet<OeeData> OeeData => Set<OeeData>();
     public DbSet<PowerData> PowerData => Set<PowerData>();
 
@@ -25,6 +27,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<MachineKpi> MachineKpis => Set<MachineKpi>();
     public DbSet<MachineMasterData> MachinesMasterData => Set<MachineMasterData>();
     public DbSet<MachineProperty> MachineProperties => Set<MachineProperty>();
+
+    /// <summary>Single-row ERP integration credentials, maintained from the ERP Settings screen.</summary>
+    public DbSet<ErpSetting> ErpSettings => Set<ErpSetting>();
 
     // Fixed timestamp for deterministic seed data (HasData must not use DateTime.Now).
     private static readonly DateTime SeedDate = new DateTime(2026, 7, 7, 0, 0, 0, DateTimeKind.Unspecified);
@@ -83,6 +88,19 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.WorkstationCapabilityPerHour).HasPrecision(10, 2);
             entity.Property(e => e.TotalRuntime).HasPrecision(10, 2);
             entity.Property(e => e.Status).HasConversion<int>();
+            entity.Property(e => e.SyncStatus).HasConversion<int>();
+
+            // The production-chain stage the order belongs to, and the stage it actually ran on.
+            // Restrict on both: a machine type in use by an order is deactivated, never deleted.
+            entity.HasOne(e => e.OrderType)
+                .WithMany()
+                .HasForeignKey(e => e.OrderTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.MachineType)
+                .WithMany()
+                .HasForeignKey(e => e.MachineTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.InputProduct)
                 .WithMany()
@@ -100,7 +118,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
-        // ---- WorkOrderInput (003) — weight-only records, no code/tracing ----
+        // ---- WorkOrderInput (003) — a weight, and optionally the upstream unit it came from ----
         modelBuilder.Entity<WorkOrderInput>(entity =>
         {
             entity.HasKey(e => e.InputId);
@@ -112,6 +130,76 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany(w => w.Inputs)
                 .HasForeignKey(e => e.WorkOrderId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // One output is consumed once: a unit cannot be fed into two orders. Unique rather
+            // than plain, so a double scan fails at the database instead of double-counting.
+            entity.HasIndex(e => e.SourceOutputId).IsUnique();
+
+            // Restrict: an output that has been consumed is history, not something a delete of the
+            // producing order may quietly erase from under the order that consumed it.
+            entity.HasOne(e => e.SourceOutput)
+                .WithOne(o => o.ConsumedBy)
+                .HasForeignKey<WorkOrderInput>(e => e.SourceOutputId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ---- WorkOrderOutput — the units an order produced ----
+        modelBuilder.Entity<WorkOrderOutput>(entity =>
+        {
+            entity.HasKey(e => e.OutputId);
+
+            // The code is how the next order in the chain names this unit, so it must be unique
+            // across the whole table, not just within its order.
+            entity.HasIndex(e => e.UniqueCode).IsUnique();
+
+            // What vw_running_orders_summary aggregates, and how the printer claims work.
+            entity.HasIndex(e => e.WorkOrderId);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.PrintStatus);
+
+            entity.Property(e => e.Weight).HasPrecision(10, 2);
+
+            entity.HasOne(e => e.WorkOrder)
+                .WithMany(w => w.Outputs)
+                .HasForeignKey(e => e.WorkOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ---- WorkOrderInputProduct (006) — which products an order consumes, in the caller's order ----
+        modelBuilder.Entity<WorkOrderInputProduct>(entity =>
+        {
+            entity.HasKey(e => e.WorkOrderInputProductId);
+
+            // One row per product per order. 005 refuses a repeated code at the edge (R13); this
+            // index is the same rule stated where it cannot be bypassed, and it is what makes two
+            // simultaneous callers fail loudly instead of quietly storing a duplicate.
+            entity.HasIndex(e => new { e.WorkOrderId, e.ProductId }).IsUnique();
+
+            // The read this table exists for: "every input of this order, in order".
+            entity.HasIndex(e => new { e.WorkOrderId, e.Position });
+
+            entity.HasOne(e => e.WorkOrder)
+                .WithMany(w => w.InputProducts)
+                .HasForeignKey(e => e.WorkOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Restrict, matching work_orders.input_product_id: a product referenced by an order is
+            // deactivated, never deleted out from under it.
+            entity.HasOne(e => e.Product)
+                .WithMany()
+                .HasForeignKey(e => e.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ---- ErpSetting — single-row ERP credentials ----
+        modelBuilder.Entity<ErpSetting>(entity =>
+        {
+            entity.HasKey(e => e.ErpSettingId);
+
+            // The key is the constant ErpSetting.SingletonId, not a generated value. Letting MySQL
+            // auto-increment it would allow a second row to appear, and "the ERP settings" would
+            // stop being a single answerable question.
+            entity.Property(e => e.ErpSettingId).ValueGeneratedNever();
         });
 
         // ---- OeeData (US4) — compatibility-locked, read-only ----

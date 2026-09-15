@@ -4,6 +4,7 @@ using BetaPlatform.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BetaPlatform.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260911210051_AddErpSettings")]
+    partial class AddErpSettings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -861,14 +864,6 @@ namespace BetaPlatform.Migrations
                         .HasColumnType("int")
                         .HasColumnName("machine_id");
 
-                    b.Property<int?>("MachineTypeId")
-                        .HasColumnType("int")
-                        .HasColumnName("machine_type");
-
-                    b.Property<int?>("OrderTypeId")
-                        .HasColumnType("int")
-                        .HasColumnName("order_type");
-
                     b.Property<int>("OutputProductId")
                         .HasColumnType("int")
                         .HasColumnName("output_product_id");
@@ -889,14 +884,6 @@ namespace BetaPlatform.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int")
                         .HasColumnName("status");
-
-                    b.Property<int>("SyncStatus")
-                        .HasColumnType("int")
-                        .HasColumnName("sync_status");
-
-                    b.Property<int?>("TotalMixedData")
-                        .HasColumnType("int")
-                        .HasColumnName("total_mixed_data");
 
                     b.Property<decimal>("TotalRuntime")
                         .HasPrecision(10, 2)
@@ -922,10 +909,6 @@ namespace BetaPlatform.Migrations
 
                     b.HasIndex("MachineId");
 
-                    b.HasIndex("MachineTypeId");
-
-                    b.HasIndex("OrderTypeId");
-
                     b.HasIndex("OutputProductId");
 
                     b.HasIndex("Status");
@@ -949,10 +932,6 @@ namespace BetaPlatform.Migrations
                         .HasColumnType("datetime(6)")
                         .HasColumnName("created_at");
 
-                    b.Property<int?>("SourceOutputId")
-                        .HasColumnType("int")
-                        .HasColumnName("source_output_id");
-
                     b.Property<decimal>("Weight")
                         .HasPrecision(10, 2)
                         .HasColumnType("decimal(10,2)")
@@ -963,9 +942,6 @@ namespace BetaPlatform.Migrations
                         .HasColumnName("work_order_id");
 
                     b.HasKey("InputId");
-
-                    b.HasIndex("SourceOutputId")
-                        .IsUnique();
 
                     b.HasIndex("WorkOrderId");
 
@@ -1007,61 +983,6 @@ namespace BetaPlatform.Migrations
                         .IsUnique();
 
                     b.ToTable("work_order_input_products");
-                });
-
-            modelBuilder.Entity("BetaPlatform.Data.Entities.WorkOrderOutput", b =>
-                {
-                    b.Property<int>("OutputId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("output_id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("OutputId"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)")
-                        .HasColumnName("notes");
-
-                    b.Property<bool>("PrintStatus")
-                        .HasColumnType("tinyint(1)")
-                        .HasColumnName("print_status");
-
-                    b.Property<int>("SequenceNumber")
-                        .HasColumnType("int")
-                        .HasColumnName("sequence_number");
-
-                    b.Property<string>("UniqueCode")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("unique_code");
-
-                    b.Property<decimal>("Weight")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("decimal(10,2)")
-                        .HasColumnName("weight");
-
-                    b.Property<int>("WorkOrderId")
-                        .HasColumnType("int")
-                        .HasColumnName("work_order_id");
-
-                    b.HasKey("OutputId");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("PrintStatus");
-
-                    b.HasIndex("UniqueCode")
-                        .IsUnique();
-
-                    b.HasIndex("WorkOrderId");
-
-                    b.ToTable("work_order_outputs");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -1279,16 +1200,6 @@ namespace BetaPlatform.Migrations
                         .HasForeignKey("MachineId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("BetaPlatform.Data.Entities.MachineType", "MachineType")
-                        .WithMany()
-                        .HasForeignKey("MachineTypeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("BetaPlatform.Data.Entities.MachineType", "OrderType")
-                        .WithMany()
-                        .HasForeignKey("OrderTypeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("BetaPlatform.Data.Entities.Product", "OutputProduct")
                         .WithMany()
                         .HasForeignKey("OutputProductId")
@@ -1299,27 +1210,16 @@ namespace BetaPlatform.Migrations
 
                     b.Navigation("Machine");
 
-                    b.Navigation("MachineType");
-
-                    b.Navigation("OrderType");
-
                     b.Navigation("OutputProduct");
                 });
 
             modelBuilder.Entity("BetaPlatform.Data.Entities.WorkOrderInput", b =>
                 {
-                    b.HasOne("BetaPlatform.Data.Entities.WorkOrderOutput", "SourceOutput")
-                        .WithOne("ConsumedBy")
-                        .HasForeignKey("BetaPlatform.Data.Entities.WorkOrderInput", "SourceOutputId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("BetaPlatform.Data.Entities.WorkOrder", "WorkOrder")
                         .WithMany("Inputs")
                         .HasForeignKey("WorkOrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("SourceOutput");
 
                     b.Navigation("WorkOrder");
                 });
@@ -1339,17 +1239,6 @@ namespace BetaPlatform.Migrations
                         .IsRequired();
 
                     b.Navigation("Product");
-
-                    b.Navigation("WorkOrder");
-                });
-
-            modelBuilder.Entity("BetaPlatform.Data.Entities.WorkOrderOutput", b =>
-                {
-                    b.HasOne("BetaPlatform.Data.Entities.WorkOrder", "WorkOrder")
-                        .WithMany("Outputs")
-                        .HasForeignKey("WorkOrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
 
                     b.Navigation("WorkOrder");
                 });
@@ -1422,13 +1311,6 @@ namespace BetaPlatform.Migrations
                     b.Navigation("InputProducts");
 
                     b.Navigation("Inputs");
-
-                    b.Navigation("Outputs");
-                });
-
-            modelBuilder.Entity("BetaPlatform.Data.Entities.WorkOrderOutput", b =>
-                {
-                    b.Navigation("ConsumedBy");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -8,11 +8,13 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using BetaPlatform.Data;
 using BetaPlatform.Data.Entities;
 using BetaPlatform.Services;
 using BetaPlatform.Services.Api;
+using BetaPlatform.Services.Erp;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -108,13 +110,35 @@ builder.Services.AddScoped<IWorkOrderService, WorkOrderService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IUserAdminService, UserAdminService>();
 
+// ---- Upstream ERP integration (outbound /api/upward/v1/mo/*) ----
+// The opposite direction from the Integration API below: here Beta is the client. The base URL is
+// deployment configuration; the API token is a rotatable credential and lives in the database
+// behind the ERP Settings screen.
+builder.Services.Configure<ErpOptions>(builder.Configuration.GetSection(ErpOptions.SectionName));
+builder.Services.AddScoped<IErpSettingsService, ErpSettingsService>();
+builder.Services.AddScoped<MockErpClient>();
+builder.Services.AddHttpClient<HttpErpClient>((sp, http) =>
+{
+    // Short by design: a slow ERP must not hold up an operator pressing Start.
+    http.Timeout = sp.GetRequiredService<IOptions<ErpOptions>>().Value.Timeout;
+});
+
+// Which of the two answers IErpClient is decided per resolve, not captured at startup, so a base
+// URL supplied by a reloadable configuration source takes effect without a restart.
+builder.Services.AddScoped<IErpClient>(sp =>
+    sp.GetRequiredService<IOptionsMonitor<ErpOptions>>().CurrentValue.IsConfigured
+        ? sp.GetRequiredService<HttpErpClient>()
+        : sp.GetRequiredService<MockErpClient>());
+
 // ---- Integration API services (005) ----
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
-// Contract-first slice: these return representative data and persist nothing. The behaviour
-// slice swaps them for implementations delegating to IProductService/IWorkOrderService, and
-// changes nothing else (research R7).
-builder.Services.AddScoped<IProductApiService, SampleProductApiService>();
-builder.Services.AddScoped<IWorkOrderApiService, SampleWorkOrderApiService>();
+// 006 behaviour slice: the swap 005 research R7 designed for. These delegate to
+// IProductService/IWorkOrderService, so the API and the browser screens enforce one set of rules.
+// The Sample* implementations they replaced returned representative data and persisted nothing;
+// no route, DTO or status code moved when they were swapped out (005 FR-034, SC-005).
+builder.Services.AddScoped<IProductApiService, DataProductApiService>();
+builder.Services.AddScoped<IWorkOrderApiService, DataWorkOrderApiService>();
+builder.Services.AddScoped<IMachineApiService, DataMachineApiService>();
 
 // ---- MVC with a global authorization requirement (FR-001) ----
 builder.Services.AddControllersWithViews(options =>

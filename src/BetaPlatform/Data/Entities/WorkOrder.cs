@@ -51,6 +51,29 @@ public class WorkOrder
     [Column("workstation_capability_per_hour")]
     public decimal? WorkstationCapabilityPerHour { get; set; }
 
+    /// <summary>
+    /// Units of mixed material counted against the order. Reported by the views
+    /// (<c>TotalMixedData</c>); Beta has no writer for it yet.
+    /// </summary>
+    [Column("total_mixed_data")]
+    public int? TotalMixedData { get; set; }
+
+    /// <summary>
+    /// The stage of the production chain this order belongs to, as a <see cref="MachineType"/>.
+    /// The reference system holds a three-value enum here; Beta keeps its machine types in a table,
+    /// so this is that table's key.
+    /// </summary>
+    [Column("order_type")]
+    public int? OrderTypeId { get; set; }
+
+    /// <summary>The type of machine the order actually ran on, stamped when it started.</summary>
+    [Column("machine_type")]
+    public int? MachineTypeId { get; set; }
+
+    /// <summary>Whether the ERP accepted this order's completion. See <see cref="WorkOrderSyncStatus"/>.</summary>
+    [Column("sync_status")]
+    public WorkOrderSyncStatus SyncStatus { get; set; } = WorkOrderSyncStatus.Pending;
+
     [Required]
     [Column("status")]
     public WorkOrderStatus Status { get; set; } = WorkOrderStatus.Ready;
@@ -112,6 +135,28 @@ public class WorkOrder
     /// <summary>Manually-recorded input records — each carries only a weight, no code/tracing
     /// (003 change request).</summary>
     public virtual ICollection<WorkOrderInput> Inputs { get; set; } = new List<WorkOrderInput>();
+
+    /// <summary>The units this order produced. Empty until the production-chain slice fills it.</summary>
+    public virtual ICollection<WorkOrderOutput> Outputs { get; set; } = new List<WorkOrderOutput>();
+
+    [ForeignKey("OrderTypeId")]
+    public virtual MachineType? OrderType { get; set; }
+
+    [ForeignKey("MachineTypeId")]
+    public virtual MachineType? MachineType { get; set; }
+
+    /// <summary>
+    /// Every product this order consumes, in the order it was listed (006 FR-022). The entry at
+    /// position 0 always names the same product as <see cref="InputProductId"/>, which stays
+    /// required because the Work Orders screens and the running-orders reporting view read it
+    /// directly (006 FR-025).
+    /// </summary>
+    /// <remarks>
+    /// Distinct from <see cref="Inputs"/>, which records fed-in <em>weights</em> and names no
+    /// product. Same word, different question.
+    /// </remarks>
+    public virtual ICollection<WorkOrderInputProduct> InputProducts { get; set; } =
+        new List<WorkOrderInputProduct>();
 
     // Derived aggregate (not stored) — total weight of the recorded inputs.
     [NotMapped]

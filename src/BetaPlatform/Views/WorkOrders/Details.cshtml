@@ -35,7 +35,38 @@
             <div class="card-body">
                 <dl class="row mb-0">
                     <dt class="col-5 text-muted">@Localizer["Status"]</dt><dd class="col-7">@StatusText(Model.Status)</dd>
-                    <dt class="col-5 text-muted">@Localizer["InputProduct"]</dt><dd class="col-7">@Model.InputProduct?.ProductName</dd>
+                    @{
+                        // An order raised through the integration API can consume several materials
+                        // (006 FR-024). Position 0 is always the primary input, the same product as
+                        // Model.InputProduct, so a single-input order reads exactly as it did before.
+                        var inputProducts = Model.InputProducts
+                            .OrderBy(p => p.Position)
+                            .Select(p => p.Product?.ProductName)
+                            .Where(name => !string.IsNullOrWhiteSpace(name))
+                            .ToList();
+
+                        // Orders predating the input-products table fall back to the column.
+                        if (inputProducts.Count == 0 && Model.InputProduct is not null)
+                        {
+                            inputProducts.Add(Model.InputProduct.ProductName);
+                        }
+                    }
+                    <dt class="col-5 text-muted">@Localizer[inputProducts.Count > 1 ? "InputProducts" : "InputProduct"]</dt>
+                    <dd class="col-7">
+                        @if (inputProducts.Count > 1)
+                        {
+                            <ul class="list-unstyled mb-0">
+                                @foreach (var name in inputProducts)
+                                {
+                                    <li>@name</li>
+                                }
+                            </ul>
+                        }
+                        else
+                        {
+                            @(inputProducts.FirstOrDefault() ?? "—")
+                        }
+                    </dd>
                     <dt class="col-5 text-muted">@Localizer["OutputProduct"]</dt><dd class="col-7">@Model.OutputProduct?.ProductName</dd>
                     <dt class="col-5 text-muted">@Localizer["AssignedMachine"]</dt><dd class="col-7">@Model.Machine?.MachineName</dd>
                     <dt class="col-5 text-muted">@Localizer["QtyToManufacture"]</dt><dd class="col-7">@Model.QtyToManufacture</dd>

@@ -9,9 +9,10 @@ namespace BetaPlatform.Services.Api;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Two gaps are closed here. First, the <strong>slice note</strong>: an integrator reading only
-/// <c>/openapi/v1.json</c> must be told which responses are representative rather than real, and
-/// that statement has to travel inside the document rather than in a side file nobody opens.
+/// Two gaps are closed here. First, the <strong>description</strong>: the rules an integrator has to
+/// know before writing a client — that products are addressed by code, that an order names several
+/// inputs and one output, and what a refusal means — have to travel inside the document rather than
+/// in a side file nobody opens.
 /// </para>
 /// <para>
 /// Second, the <strong>security scheme</strong>: without it the document describes the endpoints
@@ -42,12 +43,10 @@ public sealed class OpenApiDocumentTransformer : IOpenApiDocumentTransformer
                 "and raise a work order. " +
                 "Products are addressed by PRODUCT CODE; internal record numbers never appear in " +
                 "this contract, in either direction.\n\n" +
-                "SLICE NOTE: authentication, permissions and request validation are fully " +
-                "implemented. The product and work-order operations return REPRESENTATIVE data and " +
-                "persist nothing — responses documented as not-yet-produced (404 for an unknown " +
-                "product code, 409 for a duplicate code or work-order number, 400 for an " +
-                "unresolvable product code) are specified here and will be produced unchanged by " +
-                "the follow-up behaviour slice."
+                "A work order names SEVERAL input products and ONE output, all by code. A code " +
+                "that names no product, or names a deactivated one, answers 400 naming the " +
+                "offending entry — every offending entry in the same response. A duplicate product " +
+                "code or work-order number answers 409. A refused request stores nothing."
         };
 
         document.Components ??= new OpenApiComponents();

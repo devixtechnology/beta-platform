@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
@@ -101,6 +101,7 @@
   <data name="WorkOrder" xml:space="preserve"><value>Work Order</value></data>
   <data name="WorkOrderNumber" xml:space="preserve"><value>Work Order Number</value></data>
   <data name="InputProduct" xml:space="preserve"><value>Input Product</value></data>
+  <data name="InputProducts" xml:space="preserve"><value>Input Products</value></data>
   <data name="OutputProduct" xml:space="preserve"><value>Output Product</value></data>
   <data name="AssignedMachine" xml:space="preserve"><value>Assigned Machine</value></data>
   <data name="PlannedStartTime" xml:space="preserve"><value>Planned Start Time</value></data>
@@ -251,4 +252,28 @@
   <data name="DisplayNoMachinesTitle" xml:space="preserve"><value>No active machines</value></data>
   <data name="DisplayNoMachinesText" xml:space="preserve"><value>Add or reactivate a machine to see it on this screen.</value></data>
   <data name="PageIndicator" xml:space="preserve"><value>Page</value></data>
+  <data name="ErpSettings" xml:space="preserve"><value>ERP Settings</value></data>
+  <data name="ErpConnection" xml:space="preserve"><value>Connection</value></data>
+  <data name="ErpCredentials" xml:space="preserve"><value>Credentials</value></data>
+  <data name="ErpBaseUrl" xml:space="preserve"><value>ERP Base URL</value></data>
+  <data name="ErpBaseUrlHelp" xml:space="preserve"><value>Set in appsettings.json under Erp:BaseUrl. It belongs to the deployment, so it is not edited here.</value></data>
+  <data name="ErpApiToken" xml:space="preserve"><value>API Token</value></data>
+  <data name="ErpApiTokenHelp" xml:space="preserve"><value>Sent as the X-API-Key header on every call to the ERP. Leave blank to stop sending calls.</value></data>
+  <data name="ErpShowToken" xml:space="preserve"><value>Show token</value></data>
+  <data name="ErpStatus" xml:space="preserve"><value>Integration Status</value></data>
+  <data name="ErpMode" xml:space="preserve"><value>Mode</value></data>
+  <data name="ErpModeLive" xml:space="preserve"><value>Live</value></data>
+  <data name="ErpModeMocked" xml:space="preserve"><value>Mocked</value></data>
+  <data name="ErpTokenStored" xml:space="preserve"><value>Stored</value></data>
+  <data name="ErpTokenMissing" xml:space="preserve"><value>Not set</value></data>
+  <data name="ErpLastUpdated" xml:space="preserve"><value>Last updated</value></data>
+  <data name="ErpUpdatedBy" xml:space="preserve"><value>Updated by</value></data>
+  <data name="ErpNotConfigured" xml:space="preserve"><value>No ERP is configured</value></data>
+  <data name="ErpNotConfiguredText" xml:space="preserve"><value>Erp:BaseUrl is blank, so work-order events are written to the log instead of being sent. Work orders start, hold and finish exactly as normal.</value></data>
+  <data name="ErpConnected" xml:space="preserve"><value>ERP integration is live</value></data>
+  <data name="ErpConnectedText" xml:space="preserve"><value>Work-order events are sent to the ERP. A failed call is logged and never blocks the work order.</value></data>
+  <data name="ErpEventsSent" xml:space="preserve"><value>Events sent to the ERP</value></data>
+  <data name="ErpEventStart" xml:space="preserve"><value>Start and resume a work order</value></data>
+  <data name="ErpEventHold" xml:space="preserve"><value>Put a work order on hold</value></data>
+  <data name="ErpEventFinish" xml:space="preserve"><value>Finish a work order, with the produced weight</value></data>
 </root>

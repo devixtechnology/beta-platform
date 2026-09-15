@@ -60,3 +60,4 @@ publish/
 *.dll
 appsettings.*.local.json
 
+publish.zip

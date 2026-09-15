@@ -1,22 +1,21 @@
 openapi: 3.0.3
 
-# Design-time contract for feature 005-jwt-integration-api.
+# Design-time contract for the integration API (005, behaviour completed by 006).
 # The running app publishes the generated equivalent at /openapi/v1.json (FR-032); this file is the
-# agreed target that generation must match. Operations whose data is representative in this slice
-# are marked in their description (FR-033) — their SHAPES are final (FR-034).
+# agreed target that generation must match. Every operation here is backed by real stored data.
+# GET /machines was added after 005 shipped; the other six are unchanged from the agreed shapes.
 
 info:
   title: Beta Platform Integration API
   version: "1.0"
   description: >
     Sign in for a bearer token, renew it with a refresh token, read and add products,
-    and raise a work order.
-    Products are addressed by PRODUCT CODE; internal record numbers never appear in this contract.
+    list machines, and raise a work order.
 
-    SLICE NOTE: authentication, permissions and request validation are fully implemented.
-    The product and work-order operations return representative data and persist nothing;
-    responses marked "not yet produced" are specified here and will be produced unchanged
-    by the follow-up behaviour slice.
+    PRODUCTS are addressed by PRODUCT CODE, and a product's internal record number never appears
+    in this contract, in either direction. MACHINES are the exception, and deliberately so: a
+    machine has no external code that addresses it here, and `machineId` is what POST /work-orders
+    asks for - so GET /machines returns it.
 
 servers:
   - url: /api/v1
@@ -26,11 +25,13 @@ security:
 
 tags:
   - name: Auth
-    description: Fully implemented.
+    description: Sign-in and token renewal.
   - name: Products
-    description: Shapes final; data representative in this slice.
+    description: The stored catalogue, addressed by product code.
+  - name: Machines
+    description: The machine fleet. The one place a record id is returned.
   - name: WorkOrders
-    description: Shapes final; data representative in this slice.
+    description: Raising orders, naming products by code.
 
 paths:
   /auth/login:
@@ -103,7 +104,7 @@ paths:
     get:
       tags: [Products]
       summary: List products
-      description: Representative data in this slice. An empty catalogue is `[]`, never 404.
+      description: The stored catalogue. An empty catalogue is `[]`, never 404.
       parameters:
         - name: activeOnly
           in: query
@@ -124,8 +125,9 @@ paths:
       tags: [Products]
       summary: Create a product
       description: >
-        Admin only. Request validation is enforced; the product is NOT persisted in this slice.
-        The 409 duplicate-code response is specified but not yet produced.
+        Admin only. The product is stored and is immediately visible to the reads above and to the
+        platform's own Products screen. A code already in use answers 409, compared trimmed and
+        case-insensitively.
       requestBody:
         required: true
         content:
@@ -151,9 +153,9 @@ paths:
       tags: [Products]
       summary: Get one product by its product code
       description: >
-        Representative data in this slice; the 404 is specified but not yet produced.
         Codes are trimmed and matched case-insensitively. A deactivated product is returned
-        with isActive=false rather than reported missing.
+        with isActive=false rather than reported missing - "never existed" and "no longer used"
+        are different answers. A code carried by no product answers 404.
       parameters:
         - name: productCode
           in: path
@@ -168,16 +170,44 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /machines:
+    get:
+      tags: [Machines]
+      summary: List machines, with ids
+      description: >
+        Every machine with its full detail - including `machineId`, which is the value
+        POST /work-orders expects. An empty fleet is `[]`, never 404.
+        `runningState` is the live state by the same rule every screen uses and is NOT the stored
+        `isRunning` flag.
+      parameters:
+        - name: activeOnly
+          in: query
+          required: false
+          schema: { type: boolean, default: false }
+          description: Exclude deactivated machines.
+      responses:
+        '200':
+          description: The fleet.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Machine' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
   /work-orders:
     post:
       tags: [WorkOrders]
       summary: Create a work order, naming products by code
       description: >
-        Admin or Client. Request validation is enforced; the order is NOT persisted in this slice.
+        Admin or Client. The order is stored in status Ready and appears on the Work Orders screen.
         Inputs are a LIST of product codes (at least one, none blank, no repeats); the output is a
-        SINGLE code. An unresolvable code (400, naming inputProductCodes[i] or outputProductCode)
-        and a duplicate work-order number (409) are specified but not yet produced. The output code
-        may repeat an input — a rework order legitimately consumes and produces the same product.
+        SINGLE code. Every code is resolved against the stored catalogue before anything is written,
+        so a refused request stores NOTHING. A code that names no product - or names a DEACTIVATED
+        one - answers 400 naming the offending entry as inputProductCodes[i] or outputProductCode,
+        and every offending entry is named in the same response. A duplicate work-order number
+        answers 409. An unknown machineId answers 400. The output code may repeat an input - a
+        rework order legitimately consumes and produces the same product.
       requestBody:
         required: true
         content:
@@ -251,6 +281,48 @@ components:
         roles:
           type: array
           items: { type: string, enum: [Admin, Client] }
+
+    Machine:
+      type: object
+      description: >
+        A machine and everything the platform knows about it. This is the ONE schema in this
+        contract that carries a record id, because a machine has no external code that addresses it
+        here and `machineId` is what a work order must name.
+      required: [machineId, machineCode, machineName, machineTypeId, isActive, isRunning, runningState, createdAt]
+      properties:
+        machineId:
+          type: integer
+          description: Send this as `machineId` when raising a work order.
+        machineCode:
+          type: string
+          maxLength: 20
+          description: Painted on the machine. Informational - nothing resolves by it.
+        machineName:            { type: string, maxLength: 50 }
+        machineTypeId:          { type: integer }
+        machineTypeName:        { type: string, nullable: true, description: Primary (Arabic) type name. }
+        machineTypeNameEnglish: { type: string, nullable: true }
+        productionLine:
+          type: string
+          nullable: true
+          description: Grouping label carried by the machine's type; there is no separate production-line record.
+        isActive:
+          type: boolean
+          description: False for a retired machine, which is still listed rather than hidden.
+        isRunning:
+          type: boolean
+          description: >
+            The stored administrator flag. NOT the live state - see `runningState`. Reading this as
+            "is it running right now" is the mistake the two separate fields exist to prevent.
+        runningState:
+          type: string
+          enum: [Running, Stopped, Unknown]
+          description: >
+            Live state, sent as a NAME and never an internal number. An in-progress work order on
+            the machine forces Running. Otherwise the latest telemetry reading decides, and a
+            machine that has never reported - or whose reading has aged past the staleness
+            threshold - is Stopped: silence means not producing. Unknown survives only for a fresh
+            reading whose status cannot be interpreted.
+        createdAt: { type: string, format: date-time }
 
     Product:
       type: object

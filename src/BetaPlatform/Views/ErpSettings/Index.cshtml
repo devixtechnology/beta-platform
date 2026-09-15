@@ -1,0 +1,137 @@
+@model BetaPlatform.ViewModels.ErpSettings.ErpSettingsViewModel
+@{ ViewData["Title"] = Localizer["ErpSettings"].Value; }
+
+<div class="page-header">
+    <h1 class="page-title"><span class="title-icon"><i class="bi bi-plug-fill"></i></span>@Localizer["ErpSettings"]</h1>
+</div>
+
+<form asp-action="Index" method="post" class="form-layout">
+    <div class="form-pane">
+        <div class="card">
+            <div class="card-body p-4">
+                <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+                @if (Model.IsMocked)
+                {
+                    <div class="alert alert-warning d-flex gap-2 align-items-start" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+                        <div>
+                            <strong>@Localizer["ErpNotConfigured"]</strong>
+                            <div class="small mb-0">@Localizer["ErpNotConfiguredText"]</div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-success d-flex gap-2 align-items-start" role="alert">
+                        <i class="bi bi-check-circle-fill mt-1"></i>
+                        <div>
+                            <strong>@Localizer["ErpConnected"]</strong>
+                            <div class="small mb-0">@Localizer["ErpConnectedText"]</div>
+                        </div>
+                    </div>
+                }
+
+                <div class="form-section">
+                    <div class="section-title"><i class="bi bi-hdd-network"></i>@Localizer["ErpConnection"]</div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["ErpBaseUrl"]</label>
+                        <input class="form-control" value="@Model.BaseUrl" readonly disabled
+                               placeholder="@Localizer["NotSet"]" />
+                        <div class="form-help">@Localizer["ErpBaseUrlHelp"]</div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title"><i class="bi bi-key-fill"></i>@Localizer["ErpCredentials"]</div>
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="ApiToken">@Localizer["ErpApiToken"]</label>
+                        <div class="input-group">
+                            <input asp-for="ApiToken" type="password" class="form-control"
+                                   autocomplete="off" spellcheck="false"
+                                   placeholder="@Localizer["ErpApiToken"]" id="erpApiToken" />
+                            <button class="btn btn-outline-secondary" type="button" id="erpTokenToggle"
+                                    aria-label="@Localizer["ErpShowToken"]" title="@Localizer["ErpShowToken"]">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-help">@Localizer["ErpApiTokenHelp"]</div>
+                        <span asp-validation-for="ApiToken" class="field-validation-error small"></span>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg btn-label-icon"></i>@Localizer["Save"]
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="preview-pane">
+        <div class="preview-card">
+            <div class="preview-eyebrow"><i class="bi bi-info-circle"></i>@Localizer["ErpStatus"]</div>
+            <div class="preview-row">
+                <span class="k">@Localizer["ErpMode"]</span>
+                <span class="v">
+                    @if (Model.IsMocked)
+                    {
+                        <span class="badge bg-warning text-dark">@Localizer["ErpModeMocked"]</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success">@Localizer["ErpModeLive"]</span>
+                    }
+                </span>
+            </div>
+            <div class="preview-row">
+                <span class="k">@Localizer["ErpApiToken"]</span>
+                <span class="v">
+                    @if (Model.HasToken)
+                    {
+                        <span class="badge bg-success">@Localizer["ErpTokenStored"]</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">@Localizer["ErpTokenMissing"]</span>
+                    }
+                </span>
+            </div>
+            <div class="preview-row">
+                <span class="k">@Localizer["ErpLastUpdated"]</span>
+                <span class="v @(Model.UpdatedAt is null ? "preview-empty" : "")">
+                    @(Model.UpdatedAt?.ToString("yyyy-MM-dd HH:mm") ?? Localizer["NotSet"].Value)
+                </span>
+            </div>
+            <div class="preview-row">
+                <span class="k">@Localizer["ErpUpdatedBy"]</span>
+                <span class="v @(string.IsNullOrWhiteSpace(Model.UpdatedBy) ? "preview-empty" : "")">
+                    @(string.IsNullOrWhiteSpace(Model.UpdatedBy) ? Localizer["NotSet"].Value : Model.UpdatedBy)
+                </span>
+            </div>
+
+            <hr />
+            <div class="preview-eyebrow"><i class="bi bi-broadcast"></i>@Localizer["ErpEventsSent"]</div>
+            <ul class="small mb-0 ps-3">
+                <li>@Localizer["ErpEventStart"]</li>
+                <li>@Localizer["ErpEventHold"]</li>
+                <li>@Localizer["ErpEventFinish"]</li>
+            </ul>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Reveal the token so an administrator can check what they pasted before saving.
+        document.getElementById('erpTokenToggle')?.addEventListener('click', function () {
+            const field = document.getElementById('erpApiToken');
+            const icon = this.querySelector('i');
+            const hidden = field.type === 'password';
+            field.type = hidden ? 'text' : 'password';
+            icon.className = hidden ? 'bi bi-eye-slash' : 'bi bi-eye';
+        });
+    </script>
+}

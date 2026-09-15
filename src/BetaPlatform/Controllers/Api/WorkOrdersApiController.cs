@@ -11,9 +11,9 @@ namespace BetaPlatform.Controllers.Api;
 /// Raising work orders, naming products by code.
 /// </summary>
 /// <remarks>
-/// <strong>Representative data in this slice.</strong> Request validation and permissions are
-/// enforced; nothing is written to the work-orders table and product codes are not yet resolved
-/// against the real catalogue (FR-033).
+/// Every submitted product code is resolved against the stored catalogue and the order is stored
+/// (006). Resolution happens in full before anything is written, so a refused request leaves nothing
+/// behind and a request naming several bad codes is told about all of them at once.
 /// </remarks>
 [ApiController]
 [Route("api/v1/work-orders")]
@@ -28,7 +28,7 @@ public class WorkOrdersApiController : ApiControllerBase
 
     /// <summary>
     /// Creates a work order from a list of input <em>product codes</em> and one output product
-    /// code. Representative data in this slice — the order is validated but not persisted.
+    /// code. The order is stored in the Ready state and appears on the Work Orders screen.
     /// </summary>
     /// <remarks>
     /// The inputs are a list because an order consumes several materials; the output stays a single
@@ -49,7 +49,7 @@ public class WorkOrdersApiController : ApiControllerBase
     /// <response code="403">Authenticated, but holding neither the administrative nor the client role.</response>
     /// <response code="409">A work order with this number already exists.</response>
     [EndpointSummary("Create a work order, naming products by code")]
-    [EndpointDescription("Request validation and permissions are ENFORCED; the order is NOT PERSISTED in this slice. Inputs are a LIST of product codes (at least one, none blank, no repeats); the output is a SINGLE code. An output code may repeat an input - a rework order legitimately consumes and produces the same product. An unresolvable product code answers 400 naming which entry failed, as inputProductCodes[i] (NOT 404, which would say the endpoint is missing); that and the 409 for a duplicate work-order number are specified but NOT YET PRODUCED.")]
+    [EndpointDescription("Stores the order in status Ready. Inputs are a LIST of product codes (at least one, none blank, no repeats); the output is a SINGLE code. An output code may repeat an input - a rework order legitimately consumes and produces the same product. A code that names no product, or names a DEACTIVATED one, answers 400 naming which entry failed, as inputProductCodes[i] or outputProductCode (NOT 404, which would say the endpoint is missing); every offending entry is named in the same response. A work-order number already in use answers 409. A refused request stores nothing.")]
     [HttpPost]
     [ProducesResponseType(typeof(WorkOrderResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

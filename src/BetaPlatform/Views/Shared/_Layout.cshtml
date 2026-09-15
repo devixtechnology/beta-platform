@@ -1,4 +1,4 @@
-@using Microsoft.AspNetCore.Identity
+﻿@using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.Localization
 @using BetaPlatform.Data.Entities
 @inject SignInManager<ApplicationUser> SignInManager
@@ -71,6 +71,11 @@
                         <li class="nav-item">
                             <a class="nav-link @NavActive("Users")" asp-controller="Users" asp-action="Index">
                                 <i class="bi bi-people-fill me-1"></i> @Localizer["Users"]
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @NavActive("ErpSettings")" asp-controller="ErpSettings" asp-action="Index">
+                                <i class="bi bi-plug-fill me-1"></i> @Localizer["ErpSettings"]
                             </a>
                         </li>
                     }

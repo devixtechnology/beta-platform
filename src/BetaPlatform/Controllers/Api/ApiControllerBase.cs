@@ -22,7 +22,19 @@ namespace BetaPlatform.Controllers.Api;
 public abstract class ApiControllerBase : ControllerBase
 {
     /// <summary>Maps a non-success outcome to its response.</summary>
-    protected IActionResult ToFailure(ApiOutcome outcome, string? error, string? fieldName) => outcome switch
+    protected IActionResult ToFailure(ApiOutcome outcome, string? error, string? fieldName) =>
+        ToFailure(outcome, error, fieldName, null);
+
+    /// <summary>
+    /// Maps a non-success outcome to its response, optionally naming several offending fields at
+    /// once (006 FR-015) — a work order carrying three unresolvable codes tells the caller about all
+    /// three in one answer instead of one per round trip.
+    /// </summary>
+    protected IActionResult ToFailure(
+        ApiOutcome outcome,
+        string? error,
+        string? fieldName,
+        IReadOnlyDictionary<string, string[]>? errors) => outcome switch
     {
         // The addressed resource does not exist.
         ApiOutcome.NotFound => Problem(title: error, statusCode: StatusCodes.Status404NotFound),
@@ -35,10 +47,12 @@ public abstract class ApiControllerBase : ControllerBase
         // dictionary, because when a request carries two codes the caller must be told which one
         // failed (FR-023).
         ApiOutcome.Invalid => ValidationProblem(new ValidationProblemDetails(
-            new Dictionary<string, string[]>
-            {
-                [fieldName ?? string.Empty] = [error ?? "The value is not valid."]
-            })),
+            errors is { Count: > 0 }
+                ? errors.ToDictionary(e => e.Key, e => e.Value)
+                : new Dictionary<string, string[]>
+                {
+                    [fieldName ?? string.Empty] = [error ?? "The value is not valid."]
+                })),
 
         _ => Problem(statusCode: StatusCodes.Status500InternalServerError)
     };
@@ -47,5 +61,5 @@ public abstract class ApiControllerBase : ControllerBase
     protected IActionResult FromResult<T>(ApiResult<T> result, Func<T, IActionResult> onSuccess) =>
         result.Outcome == ApiOutcome.Success && result.Value is not null
             ? onSuccess(result.Value)
-            : ToFailure(result.Outcome, result.Error, result.FieldName);
+            : ToFailure(result.Outcome, result.Error, result.FieldName, result.Errors);
 }

@@ -51,6 +51,18 @@ public class ApiResult<T>
     /// can name it in the validation errors dictionary.</summary>
     public string? FieldName { get; init; }
 
+    /// <summary>
+    /// For <see cref="ApiOutcome.Invalid"/> when more than one field is at fault: every offending
+    /// field, keyed by the JSON name the caller sent.
+    /// </summary>
+    /// <remarks>
+    /// A work order naming three unresolvable input codes must be told about all three in one
+    /// answer. Reporting them one at a time would be correct and useless: the caller fixes one,
+    /// resubmits, and is refused again — three round trips to learn what one response could have
+    /// said (006 FR-015, SC-007). When this is set it supersedes <see cref="FieldName"/>.
+    /// </remarks>
+    public IReadOnlyDictionary<string, string[]>? Errors { get; init; }
+
     public static ApiResult<T> Ok(T value) => new() { Outcome = ApiOutcome.Success, Value = value };
 
     public static ApiResult<T> NotFound(string error) =>
@@ -61,4 +73,17 @@ public class ApiResult<T>
 
     public static ApiResult<T> Invalid(string fieldName, string error) =>
         new() { Outcome = ApiOutcome.Invalid, FieldName = fieldName, Error = error };
+
+    /// <summary>Several fields at fault, answered together (006 FR-015).</summary>
+    public static ApiResult<T> Invalid(IReadOnlyDictionary<string, string[]> errors) =>
+        new()
+        {
+            Outcome = ApiOutcome.Invalid,
+            Errors = errors,
+
+            // Kept populated so anything reading the single-field property still sees something
+            // sensible rather than null.
+            FieldName = errors.Keys.FirstOrDefault(),
+            Error = errors.Values.FirstOrDefault()?.FirstOrDefault()
+        };
 }
