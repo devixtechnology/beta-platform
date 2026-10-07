@@ -154,9 +154,9 @@ public class WorkOrderInputProductTests
 
         var order = NewOrder("WO-1", machineId, ids[0], ids[3]);
         await svc.CreateAsync(order);
-        await svc.AddInputAsync(order.WorkOrderId, 250m);
+        await svc.AddInputAsync(order.WorkOrderId, 250m, ids[0]);
 
-        Assert.Single(db.WorkOrderInputs);         // a weight, no product
+        Assert.Single(db.WorkOrderInputs);         // a weight (and the product it was)
         Assert.Single(db.WorkOrderInputProducts);  // a product, no weight
         Assert.Equal(250m, db.WorkOrderInputs.Single().Weight);
     }

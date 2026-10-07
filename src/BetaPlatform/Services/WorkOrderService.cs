@@ -16,7 +16,7 @@ public interface IWorkOrderService
     Task<ServiceResult> HoldAsync(int id);
     Task<ServiceResult> ResumeAsync(int id);
     Task<ServiceResult> FinishAsync(int id);
-    Task<ServiceResult<WorkOrderInput>> AddInputAsync(int workOrderId, decimal weight);
+    Task<ServiceResult<WorkOrderInput>> AddInputAsync(int workOrderId, decimal weight, int? productId);
     Task<ServiceResult> DeleteInputAsync(int inputId);
     Task<ServiceResult> DeleteAsync(int id);
 
@@ -63,6 +63,7 @@ public class WorkOrderService : IWorkOrderService
             .Include(w => w.OutputProduct)
             .Include(w => w.Machine)
             .Include(w => w.Inputs)
+                .ThenInclude(i => i.Product)
             // Every product the order consumes, for the details screen (006 FR-024).
             .Include(w => w.InputProducts.OrderBy(p => p.Position))
                 .ThenInclude(p => p.Product)
@@ -314,7 +315,16 @@ public class WorkOrderService : IWorkOrderService
         // notification because the finish event carries it.
         var totals = await GetLiveTotalsAsync(order.WorkOrderId);
 
-        var refused = await NotifyErpAsync(erp => erp.NotifyFinishedAsync(order, totals.TotalWeight));
+        var consumed = await GetConsumedComponentsAsync(order.WorkOrderId);
+
+        // STAND-IN until machines send telemetry: the ERP refuses a produced quantity of zero, so an
+        // order with no oee_data reports what was fed in instead. Remove this fallback (send
+        // totals.TotalWeight as-is) once the lines report real output.
+        var producedQty = totals.TotalWeight > 0
+            ? totals.TotalWeight
+            : consumed.Sum(c => c.ActualConsumedQty);
+
+        var refused = await NotifyErpAsync(erp => erp.NotifyFinishedAsync(order, producedQty, consumed));
         if (refused is not null) return refused;
 
         // Bank the final segment, so TotalRuntime holds the complete hold-excluded runtime.
@@ -328,17 +338,44 @@ public class WorkOrderService : IWorkOrderService
         return ServiceResult.Ok();
     }
 
-    public async Task<ServiceResult<WorkOrderInput>> AddInputAsync(int workOrderId, decimal weight)
+    /// <summary>
+    /// The order's input weights totalled per product code: the ERP's <c>consumed_components</c>.
+    /// Inputs that name no product (recorded before inputs did) are left out, not guessed.
+    /// </summary>
+    private async Task<IReadOnlyList<MoConsumedComponent>> GetConsumedComponentsAsync(int workOrderId)
+    {
+        var rows = await _db.WorkOrderInputs
+            .Where(i => i.WorkOrderId == workOrderId && i.ProductId != null)
+            .Select(i => new { i.Product!.ProductCode, i.Weight })
+            .ToListAsync();
+
+        return rows
+            .GroupBy(r => r.ProductCode)
+            .OrderBy(g => g.Key)
+            .Select(g => new MoConsumedComponent { ProductId = g.Key, ActualConsumedQty = g.Sum(r => r.Weight) })
+            .ToList();
+    }
+
+    public async Task<ServiceResult<WorkOrderInput>> AddInputAsync(int workOrderId, decimal weight, int? productId)
     {
         var order = await _db.WorkOrders.FirstOrDefaultAsync(w => w.WorkOrderId == workOrderId);
         if (order is null)
             return ServiceResult<WorkOrderInput>.Fail("Work order not found.");
+        if (productId is null)
+            return ServiceResult<WorkOrderInput>.Fail("Choose the product this input was.");
+        // The ERP refuses a finish reporting a component the MO does not consume, so an input may
+        // only be one of the order's own input products (the primary column or the 006 list).
+        var isOrderInput = order.InputProductId == productId
+            || await _db.WorkOrderInputProducts.AnyAsync(p => p.WorkOrderId == workOrderId && p.ProductId == productId);
+        if (!isOrderInput)
+            return ServiceResult<WorkOrderInput>.Fail("The chosen product is not one of this work order's input products.");
         if (weight <= 0)
             return ServiceResult<WorkOrderInput>.Fail("Input weight must be greater than zero.");
 
         var input = new WorkOrderInput
         {
             WorkOrderId = workOrderId,
+            ProductId = productId,
             Weight = weight
         };
         _db.WorkOrderInputs.Add(input);

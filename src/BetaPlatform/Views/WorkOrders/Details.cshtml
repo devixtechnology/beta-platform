@@ -131,7 +131,7 @@
             </div>
         </div>
 
-        <!-- Inputs: weight-only records, no code / no tracing -->
+        <!-- Inputs: a weight and the product it was (sent to the ERP on finish) -->
         <div class="card mt-3">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-box-arrow-in-down me-2"></i>@Localizer["Inputs"]</span>
@@ -146,7 +146,7 @@
                 {
                     <div class="table-responsive table-scroll">
                     <table class="table table-sm table-hover mb-0 align-middle">
-                        <thead><tr><th>#</th><th>@Localizer["Weight"]</th>@if (canRecordInputs) { <th class="text-end">@Localizer["Actions"]</th> }</tr></thead>
+                        <thead><tr><th>#</th><th>@Localizer["Product"]</th><th>@Localizer["Weight"]</th>@if (canRecordInputs) { <th class="text-end">@Localizer["Actions"]</th> }</tr></thead>
                         <tbody>
                         @{ var orderedInputs = Model.Inputs.OrderBy(i => i.InputId).ToList(); }
                         @for (var idx = 0; idx < orderedInputs.Count; idx++)
@@ -154,6 +154,7 @@
                             var inp = orderedInputs[idx];
                             <tr>
                                 <td>@(idx + 1)</td>
+                                <td>@(inp.Product is null ? "—" : $"{inp.Product.ProductCode} - {inp.Product.ProductName}")</td>
                                 <td>@inp.Weight</td>
                                 @if (canRecordInputs)
                                 {
@@ -168,7 +169,7 @@
                         }
                         </tbody>
                         <tfoot>
-                            <tr class="fw-semibold"><td>@Localizer["TotalInputWeight"]</td><td colspan="@(canRecordInputs ? 2 : 1)">@Model.TotalInputWeight</td></tr>
+                            <tr class="fw-semibold"><td colspan="2">@Localizer["TotalInputWeight"]</td><td colspan="@(canRecordInputs ? 2 : 1)">@Model.TotalInputWeight</td></tr>
                         </tfoot>
                     </table>
                     </div>
@@ -180,7 +181,14 @@
         {
             <div class="card mt-3"><div class="card-body">
                 <form asp-action="AddInput" asp-route-id="@Model.WorkOrderId" method="post" class="row g-2 align-items-end">
-                    <div class="col-8">
+                    <div class="col-5">
+                        <label class="form-label small">@Localizer["Product"]</label>
+                        <select name="productId" class="form-select form-select-sm" required
+                                asp-items="ViewBag.InputProductOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList">
+                            <option value="">—</option>
+                        </select>
+                    </div>
+                    <div class="col-3">
                         <label class="form-label small">@Localizer["Weight"]</label>
                         <input name="weight" type="number" step="0.01" min="0.01" class="form-control form-control-sm" required />
                     </div>

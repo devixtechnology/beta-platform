@@ -131,6 +131,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(e => e.WorkOrderId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // Restrict: products are deactivated, never deleted, and a consumed product is history.
+            entity.HasOne(e => e.Product)
+                .WithMany()
+                .HasForeignKey(e => e.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // One output is consumed once: a unit cannot be fed into two orders. Unique rather
             // than plain, so a double scan fails at the database instead of double-counting.
             entity.HasIndex(e => e.SourceOutputId).IsUnique();

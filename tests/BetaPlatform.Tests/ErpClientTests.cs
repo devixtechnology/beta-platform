@@ -70,6 +70,13 @@ public class ErpClientTests
             Task.CompletedTask;
     }
 
+    private sealed class StaticMonitor(ErpOptions value) : IOptionsMonitor<ErpOptions>
+    {
+        public ErpOptions CurrentValue => value;
+        public ErpOptions Get(string? name) => value;
+        public IDisposable? OnChange(Action<ErpOptions, string?> listener) => null;
+    }
+
     private static HttpErpClient Build(
         HttpMessageHandler handler,
         string? token = "token-abc",
@@ -77,7 +84,7 @@ public class ErpClientTests
         new(
             new HttpClient(handler),
             new StubSettings(token),
-            Options.Create(new ErpOptions { BaseUrl = baseUrl }),
+            new StaticMonitor(new ErpOptions { BaseUrl = baseUrl }),
             NullLogger<HttpErpClient>.Instance);
 
     [Theory]
@@ -101,7 +108,7 @@ public class ErpClientTests
         Assert.Equal("https://erp.example.com/api/upward/v1/mo/hold", hold.Request!.RequestUri!.ToString());
 
         var finish = new CapturingHandler();
-        await Build(finish).NotifyFinishedAsync(Order(), 98.5m);
+        await Build(finish).NotifyFinishedAsync(Order(), 98.5m, Array.Empty<MoConsumedComponent>());
         Assert.Equal("https://erp.example.com/api/upward/v1/mo/finish", finish.Request!.RequestUri!.ToString());
     }
 
@@ -117,14 +124,16 @@ public class ErpClientTests
     }
 
     [Fact]
-    public async Task The_Event_Body_Carries_The_Work_Order_Id_And_Number_As_Mo_Fields()
+    public async Task The_Event_Body_Names_The_Order_By_Reference_Only()
     {
         var handler = new CapturingHandler();
 
         await Build(handler).NotifyStartedAsync(Order());
 
         using var json = JsonDocument.Parse(handler.RequestBody!);
-        Assert.Equal(15, json.RootElement.GetProperty("mo_id").GetInt32());
+        // Beta's WorkOrderId is not the ERP's MO id; the ERP resolves mo_id first, so sending it
+        // would act on a different MO.
+        Assert.False(json.RootElement.TryGetProperty("mo_id", out _));
         Assert.Equal("MO/00123", json.RootElement.GetProperty("mo_reference").GetString());
     }
 
@@ -133,10 +142,10 @@ public class ErpClientTests
     {
         var handler = new CapturingHandler();
 
-        await Build(handler).NotifyFinishedAsync(Order(), 98.5m);
+        await Build(handler).NotifyFinishedAsync(Order(), 98.5m, Array.Empty<MoConsumedComponent>());
 
         using var json = JsonDocument.Parse(handler.RequestBody!);
-        Assert.Equal(15, json.RootElement.GetProperty("mo_id").GetInt32());
+        Assert.False(json.RootElement.TryGetProperty("mo_id", out _));
         Assert.Equal(98.5m, json.RootElement.GetProperty("actual_produced_qty").GetDecimal());
 
         // Present but empty — Beta has no per-product consumption figure to put here, and an
@@ -188,7 +197,7 @@ public class ErpClientTests
                  {
                      await mock.NotifyStartedAsync(Order()),
                      await mock.NotifyHeldAsync(Order()),
-                     await mock.NotifyFinishedAsync(Order(), 98.5m)
+                     await mock.NotifyFinishedAsync(Order(), 98.5m, Array.Empty<MoConsumedComponent>())
                  })
         {
             Assert.True(result.Success);
@@ -205,5 +214,24 @@ public class ErpClientTests
     {
         // This is the condition Program.cs branches on when it resolves IErpClient.
         Assert.Equal(expectMock, !new ErpOptions { BaseUrl = baseUrl }.IsConfigured);
+    }
+
+    [Fact]
+    public async Task The_Finish_Body_Carries_Components_By_Product_Code()
+    {
+        var handler = new CapturingHandler();
+
+        await Build(handler).NotifyFinishedAsync(Order(), 100m, new[]
+        {
+            new MoConsumedComponent { ProductId = "M10030", ActualConsumedQty = 55.5m },
+            new MoConsumedComponent { ProductId = "M10040", ActualConsumedQty = 44.5m }
+        });
+
+        using var json = JsonDocument.Parse(handler.RequestBody!);
+        var components = json.RootElement.GetProperty("consumed_components");
+        Assert.Equal(2, components.GetArrayLength());
+        Assert.Equal("M10030", components[0].GetProperty("product_id").GetString());
+        Assert.Equal(55.5m, components[0].GetProperty("actual_consumed_qty").GetDecimal());
+        Assert.Equal("M10040", components[1].GetProperty("product_id").GetString());
     }
 }

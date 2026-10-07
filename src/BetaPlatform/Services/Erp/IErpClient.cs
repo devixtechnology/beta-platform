@@ -42,10 +42,12 @@ public interface IErpClient
     /// The latest <c>oee_data</c> total weight recorded against the order. Zero when the order
     /// produced no telemetry — which is a real answer, not a missing one.
     /// </param>
+    /// <param name="consumedComponents">The input weights totalled per product code.</param>
     /// <param name="cancellationToken">Cancels the outbound call.</param>
     Task<ErpCallResult> NotifyFinishedAsync(
         WorkOrder order,
         decimal actualProducedQty,
+        IReadOnlyList<MoConsumedComponent> consumedComponents,
         CancellationToken cancellationToken = default);
 }
 

@@ -26,18 +26,18 @@ public class HttpErpClient : IErpClient
 
     private readonly HttpClient _http;
     private readonly IErpSettingsService _settings;
-    private readonly ErpOptions _options;
+    private readonly IOptionsMonitor<ErpOptions> _options;
     private readonly ILogger<HttpErpClient> _logger;
 
     public HttpErpClient(
         HttpClient http,
         IErpSettingsService settings,
-        IOptions<ErpOptions> options,
+        IOptionsMonitor<ErpOptions> options,
         ILogger<HttpErpClient> logger)
     {
         _http = http;
         _settings = settings;
-        _options = options.Value;
+        _options = options;
         _logger = logger;
     }
 
@@ -52,22 +52,21 @@ public class HttpErpClient : IErpClient
     public Task<ErpCallResult> NotifyFinishedAsync(
         WorkOrder order,
         decimal actualProducedQty,
+        IReadOnlyList<MoConsumedComponent> consumedComponents,
         CancellationToken cancellationToken = default) =>
         PostAsync(
             ErpEndpoints.Finish,
             new MoFinishRequest
             {
-                MoId = order.WorkOrderId,
                 MoReference = order.WorkOrderNumber,
-                ActualProducedQty = actualProducedQty
-
-                // ConsumedComponents stays at its empty default — see MoFinishRequest for why.
+                ActualProducedQty = actualProducedQty,
+                ConsumedComponents = consumedComponents
             },
             order,
             cancellationToken);
 
     private static MoEventRequest Event(WorkOrder order) =>
-        new() { MoId = order.WorkOrderId, MoReference = order.WorkOrderNumber };
+        new() { MoReference = order.WorkOrderNumber };
 
     private async Task<ErpCallResult> PostAsync<TBody>(
         string path,
@@ -102,7 +101,7 @@ public class HttpErpClient : IErpClient
             if (response.IsSuccessStatusCode)
             {
                 _logger.LogInformation(
-                    "ERP accepted {Path} for work order {WorkOrderNumber} (mo_id {MoId}) with {Status}.",
+                    "ERP accepted {Path} for work order {WorkOrderNumber} (id {WorkOrderId}) with {Status}.",
                     path, order.WorkOrderNumber, order.WorkOrderId, status);
                 return ErpCallResult.Sent(status);
             }
@@ -112,7 +111,7 @@ public class HttpErpClient : IErpClient
             // not have.
             var reason = await SafeReadAsync(response, cancellationToken);
             _logger.LogError(
-                "ERP refused {Path} for work order {WorkOrderNumber} (mo_id {MoId}) with {Status}: {Reason}",
+                "ERP refused {Path} for work order {WorkOrderNumber} (id {WorkOrderId}) with {Status}: {Reason}",
                 path, order.WorkOrderNumber, order.WorkOrderId, status, reason);
             return ErpCallResult.Failed(reason, status);
         }
@@ -121,8 +120,8 @@ public class HttpErpClient : IErpClient
             // Timed out. Distinguished from a caller-cancelled request so the log says which.
             _logger.LogError(ex,
                 "ERP call to {Path} for work order {WorkOrderNumber} timed out after {Timeout}.",
-                path, order.WorkOrderNumber, _options.Timeout);
-            return ErpCallResult.Failed($"The ERP did not answer within {_options.Timeout.TotalSeconds:0} s.");
+                path, order.WorkOrderNumber, _options.CurrentValue.Timeout);
+            return ErpCallResult.Failed($"The ERP did not answer within {_options.CurrentValue.Timeout.TotalSeconds:0} s.");
         }
         catch (Exception ex)
         {
@@ -136,8 +135,10 @@ public class HttpErpClient : IErpClient
         }
     }
 
+    // Read per call, not captured: Program.cs picks this client from the live value, so the URL it
+    // posts to must come from the same live value or a reloaded Erp:BaseUrl is chosen but not used.
     private string BuildUrl(string path) =>
-        $"{(_options.BaseUrl ?? string.Empty).TrimEnd('/')}/{path}";
+        $"{(_options.CurrentValue.BaseUrl ?? string.Empty).TrimEnd('/')}/{path}";
 
     private static async Task<string> SafeReadAsync(HttpResponseMessage response, CancellationToken ct)
     {

@@ -33,26 +33,25 @@ public class MockErpClient : IErpClient
     public Task<ErpCallResult> NotifyStartedAsync(WorkOrder order, CancellationToken cancellationToken = default) =>
         MockAsync(ErpEndpoints.Start, new MoEventRequest
         {
-            MoId = order.WorkOrderId,
             MoReference = order.WorkOrderNumber
         });
 
     public Task<ErpCallResult> NotifyHeldAsync(WorkOrder order, CancellationToken cancellationToken = default) =>
         MockAsync(ErpEndpoints.Hold, new MoEventRequest
         {
-            MoId = order.WorkOrderId,
             MoReference = order.WorkOrderNumber
         });
 
     public Task<ErpCallResult> NotifyFinishedAsync(
         WorkOrder order,
         decimal actualProducedQty,
+        IReadOnlyList<MoConsumedComponent> consumedComponents,
         CancellationToken cancellationToken = default) =>
         MockAsync(ErpEndpoints.Finish, new MoFinishRequest
         {
-            MoId = order.WorkOrderId,
             MoReference = order.WorkOrderNumber,
-            ActualProducedQty = actualProducedQty
+            ActualProducedQty = actualProducedQty,
+            ConsumedComponents = consumedComponents
         });
 
     private Task<ErpCallResult> MockAsync<TBody>(string path, TBody body)

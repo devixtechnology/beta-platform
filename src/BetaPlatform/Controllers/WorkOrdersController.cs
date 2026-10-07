@@ -28,6 +28,17 @@ public class WorkOrdersController : Controller
     {
         var order = await _orders.GetByIdAsync(id);
         if (order is null) return NotFound();
+
+        // Only the order's own input products, as "code - name": the ERP refuses a finish that
+        // reports a component the MO does not consume, so nothing else is offered.
+        var options = order.InputProducts
+            .OrderBy(p => p.Position)
+            .Select(p => p.Product)
+            .Append(order.InputProduct)
+            .Where(p => p is not null)
+            .DistinctBy(p => p!.ProductId)
+            .Select(p => new { p!.ProductId, Label = $"{p.ProductCode} - {p.ProductName}" });
+        ViewBag.InputProductOptions = new SelectList(options, "ProductId", "Label");
         return View(order);
     }
 
@@ -115,9 +126,9 @@ public class WorkOrdersController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddInput(int id, decimal weight)
+    public async Task<IActionResult> AddInput(int id, decimal weight, int? productId)
     {
-        var result = await _orders.AddInputAsync(id, weight);
+        var result = await _orders.AddInputAsync(id, weight, productId);
         TempData[result.Success ? "Success" : "Error"] = result.Success ? "Input recorded." : result.Error;
         return RedirectToAction(nameof(Details), new { id });
     }

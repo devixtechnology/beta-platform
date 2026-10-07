@@ -120,10 +120,9 @@ public class WorkOrderServiceTests
         var order = (await svc.CreateAsync(NewOrder("WO-1", m, i, o))).Value!;
         await svc.StartAsync(order.WorkOrderId);
 
-        var first = await svc.AddInputAsync(order.WorkOrderId, 12.5m);
-        var second = await svc.AddInputAsync(order.WorkOrderId, 7.5m);
+        var first = await svc.AddInputAsync(order.WorkOrderId, 12.5m, i);
+        var second = await svc.AddInputAsync(order.WorkOrderId, 7.5m, i);
 
-        // Inputs carry only a weight (no code/tracing); order/identity comes from the PK.
         Assert.True(first.Success);
         Assert.True(second.Success);
         Assert.True(second.Value!.InputId > first.Value!.InputId);
@@ -142,7 +141,7 @@ public class WorkOrderServiceTests
         var order = (await svc.CreateAsync(NewOrder("WO-1", m, i, o))).Value!;
         await svc.StartAsync(order.WorkOrderId);
 
-        var result = await svc.AddInputAsync(order.WorkOrderId, 0m);
+        var result = await svc.AddInputAsync(order.WorkOrderId, 0m, i);
 
         Assert.False(result.Success);
     }
@@ -306,5 +305,21 @@ public class WorkOrderServiceTests
 
         await svc.FinishAsync(second.WorkOrderId);
         Assert.True((await svc.ResumeAsync(first.WorkOrderId)).Success);
+    }
+
+    [Fact]
+    public async Task AddInput_Requires_A_Product()
+    {
+        using var db = TestDb.Create();
+        var svc = new WorkOrderService(db);
+        var (m, i, o) = await SeedRefsAsync(db);
+        var order = (await svc.CreateAsync(NewOrder("WO-1", m, i, o))).Value!;
+        await svc.StartAsync(order.WorkOrderId);
+
+        Assert.False((await svc.AddInputAsync(order.WorkOrderId, 5m, null)).Success);
+        Assert.False((await svc.AddInputAsync(order.WorkOrderId, 5m, 99999)).Success);
+        // A real product, but not one this order consumes: the ERP would refuse it on finish.
+        Assert.False((await svc.AddInputAsync(order.WorkOrderId, 5m, o)).Success);
+        Assert.Empty(db.WorkOrderInputs);
     }
 }

@@ -30,8 +30,13 @@ public class WorkOrderErpNotificationTests
         public Task<ErpCallResult> NotifyHeldAsync(WorkOrder order, CancellationToken cancellationToken = default) =>
             Record(MoEvent.Held, order, 0m);
 
-        public Task<ErpCallResult> NotifyFinishedAsync(WorkOrder order, decimal actualProducedQty, CancellationToken cancellationToken = default) =>
-            Record(MoEvent.Finished, order, actualProducedQty);
+        public Task<ErpCallResult> NotifyFinishedAsync(WorkOrder order, decimal actualProducedQty, IReadOnlyList<MoConsumedComponent> consumedComponents, CancellationToken cancellationToken = default)
+        {
+            LastComponents = consumedComponents;
+            return Record(MoEvent.Finished, order, actualProducedQty);
+        }
+
+        public IReadOnlyList<MoConsumedComponent>? LastComponents { get; private set; }
 
         private Task<ErpCallResult> Record(MoEvent e, WorkOrder order, decimal qty)
         {
@@ -56,7 +61,7 @@ public class WorkOrderErpNotificationTests
         public Task<ErpCallResult> NotifyHeldAsync(WorkOrder order, CancellationToken cancellationToken = default) =>
             Task.FromResult(_result);
 
-        public Task<ErpCallResult> NotifyFinishedAsync(WorkOrder order, decimal actualProducedQty, CancellationToken cancellationToken = default) =>
+        public Task<ErpCallResult> NotifyFinishedAsync(WorkOrder order, decimal actualProducedQty, IReadOnlyList<MoConsumedComponent> consumedComponents, CancellationToken cancellationToken = default) =>
             Task.FromResult(_result);
     }
 
@@ -267,5 +272,38 @@ public class WorkOrderErpNotificationTests
         var result = await new WorkOrderService(db).StartAsync(order.WorkOrderId);
 
         Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task Finishing_Sends_Input_Weights_Totalled_Per_Product_Code()
+    {
+        using var db = TestDb.Create();
+        var order = await SeedReadyOrderAsync(db, "WH/MO/00048");
+        var a = new Product { ProductCode = "M10030", ProductName = "A", Unit = "kg" };
+        var b = new Product { ProductCode = "M10040", ProductName = "B", Unit = "kg" };
+        db.Products.AddRange(a, b);
+        await db.SaveChangesAsync();
+        db.WorkOrderInputProducts.AddRange(
+            new WorkOrderInputProduct { WorkOrderId = order.WorkOrderId, ProductId = a.ProductId, Position = 1 },
+            new WorkOrderInputProduct { WorkOrderId = order.WorkOrderId, ProductId = b.ProductId, Position = 2 });
+        await db.SaveChangesAsync();
+
+        var erp = new RecordingErpClient();
+        var svc = new WorkOrderService(db, erp);
+        await svc.StartAsync(order.WorkOrderId);
+        Assert.True((await svc.AddInputAsync(order.WorkOrderId, 50m, a.ProductId)).Success);
+        Assert.True((await svc.AddInputAsync(order.WorkOrderId, 5.5m, a.ProductId)).Success);
+        Assert.True((await svc.AddInputAsync(order.WorkOrderId, 55.5m, b.ProductId)).Success);
+        // An input recorded before inputs named a product: left out, not guessed.
+        db.WorkOrderInputs.Add(new WorkOrderInput { WorkOrderId = order.WorkOrderId, Weight = 9m });
+        await db.SaveChangesAsync();
+
+        Assert.True((await svc.FinishAsync(order.WorkOrderId)).Success);
+
+        // No telemetry: the produced quantity falls back to the summed input weights (stand-in).
+        Assert.Equal(111m, erp.Calls.Last().ProducedQty);
+        Assert.Collection(erp.LastComponents!,
+            c => { Assert.Equal("M10030", c.ProductId); Assert.Equal(55.5m, c.ActualConsumedQty); },
+            c => { Assert.Equal("M10040", c.ProductId); Assert.Equal(55.5m, c.ActualConsumedQty); });
     }
 }

@@ -9,15 +9,17 @@ namespace BetaPlatform.Services.Erp;
 /// owns and must not drift with a settings change on our side.
 /// </summary>
 /// <remarks>
-/// A work order in Beta is a manufacturing order ("MO") to the ERP:
-/// <c>mo_id</c> is <see cref="Data.Entities.WorkOrder.WorkOrderId"/> and <c>mo_reference</c> is
-/// <see cref="Data.Entities.WorkOrder.WorkOrderNumber"/>.
+/// A work order in Beta is a manufacturing order ("MO") to the ERP, named by its reference only:
+/// <c>mo_reference</c> is <see cref="Data.Entities.WorkOrder.WorkOrderNumber"/>.
+/// <para>
+/// <c>mo_id</c> is deliberately <b>not</b> sent. The ERP's <c>mo_id</c> is its own MO id, and the
+/// ERP resolves it before <c>mo_reference</c>; Beta's <c>WorkOrderId</c> is a different number, so
+/// sending it made the ERP act on whichever MO happened to share that id (Beta work order 15,
+/// <c>WH/MO/00047</c>, was resolved as <c>WH/MO/00015</c>).
+/// </para>
 /// </remarks>
 public class MoEventRequest
 {
-    [JsonPropertyName("mo_id")]
-    public int MoId { get; set; }
-
     [JsonPropertyName("mo_reference")]
     public string MoReference { get; set; } = string.Empty;
 }
@@ -33,13 +35,8 @@ public class MoFinishRequest : MoEventRequest
     public decimal ActualProducedQty { get; set; }
 
     /// <summary>
-    /// Per-product consumption. <b>Always empty</b>, and deliberately so: Beta has nowhere to get
-    /// these numbers from. <c>work_order_inputs</c> records fed-in weights and names no product;
-    /// <c>work_order_input_products</c> names products and carries no quantity, which 005 research
-    /// R13 declined on purpose. Splitting the total weight across the input products would be an
-    /// invented number, and an invented number in an ERP is worse than an absent one. The field is
-    /// carried anyway so the shape the ERP expects is present, and so filling it becomes a change
-    /// of one line here on the day Beta can record consumption per product.
+    /// Per-product consumption: the order's input weights totalled per product code. Inputs recorded
+    /// before inputs named a product carry none and are left out rather than guessed.
     /// </summary>
     [JsonPropertyName("consumed_components")]
     public IReadOnlyList<MoConsumedComponent> ConsumedComponents { get; set; } =
@@ -49,8 +46,10 @@ public class MoFinishRequest : MoEventRequest
 /// <summary>One material a manufacturing order consumed, and how much of it.</summary>
 public class MoConsumedComponent
 {
+    /// <summary>Beta's <b>product code</b> (e.g. <c>M10030</c>): the ERP creates products in Beta and
+    /// keys them by that code. Named <c>product_id</c> on the wire because that is the ERP's name.</summary>
     [JsonPropertyName("product_id")]
-    public int ProductId { get; set; }
+    public string ProductId { get; set; } = string.Empty;
 
     [JsonPropertyName("actual_consumed_qty")]
     public decimal ActualConsumedQty { get; set; }
